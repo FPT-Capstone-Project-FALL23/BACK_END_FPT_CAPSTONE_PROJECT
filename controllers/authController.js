@@ -87,7 +87,14 @@ async function registerUser(req, res) {
         }
 
         // Hash mật khẩu trước khi lưu nó
-        const hashedPassword = await bcrypt.hash(password, 10);
+        let hashedPassword;
+        try {
+            hashedPassword = await bcrypt.hash(password, 10);
+        } catch (hashError) {
+            // Xử lý lỗi mã hóa mật khẩu
+            console.error('Error hashing password:', hashError);
+            return res.status(500).json({ error: 'Error hashing password' });
+        }
 
         // Create a new user
         const newUser = new User({
@@ -95,11 +102,12 @@ async function registerUser(req, res) {
             password: hashedPassword,
             role: role,
         });
-
+        
         if (role === 'client') {
             newUser.client_info = data_info;
         } else if (role === 'organizer') {
             newUser.organizer_info = data_info;
+               
         }
 
         await newUser.save();
@@ -110,7 +118,8 @@ async function registerUser(req, res) {
             message: `${role} registered successfully`
         });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred' });
+        console.error(error);
+        res.status(500).json({ error: error.message });
     }
 }
 
