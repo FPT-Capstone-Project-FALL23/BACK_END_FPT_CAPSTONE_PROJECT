@@ -1,32 +1,41 @@
 const nodemailer = require('nodemailer');
 
+const AUTH_EMAIL = "tikseat.fall2023@gmail.com";
+const AUTH_PASS = "lfcgmaqhavidpixc"; // mật khẩu ứng dụng
+// const PASS = "tikseat123456@" //mậu khẩu để vào mail tikseat.fall2023@gmail.com
 
-const { AUTH_EMAIL, AUTH_PASS } = process.env;
-let transporter = nodemailer.createTransport({
-    host: "E-Ticket-mail.outlook.com",
+
+/*=============================
+## Name function: transporter
+## Describe: Tạo một transporter để gửi email
+## Params: 
+## Result: 
+===============================*/
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
     auth: {
-        user: AUTH_EMAIL,
-        pass: AUTH_PASS,
-    },
-});
-
-//test transporter
-transporter.verify((error, success) =>{
-    if (error) {
-        console.log(error);
-    }else{
-        console.log("Ready for messages");
-        console.log(success);
+        user: AUTH_EMAIL, // Địa chỉ email của bạn
+        pass: AUTH_PASS // Mật khẩu email của bạn
     }
 });
 
-const sendEmail = async (mailOptions) => {
-    try {
-        await transporter.sendMail(mailOptions);
-        return;
-    } catch (error) {
-        throw error;
-    }
-};
+/*=============================
+## Name function: sendMailToUser
+## Describe: Gửi email cho user
+## Params: mailOptions
+## Result: 
+===============================*/
+function sendMailToUser(mailOptions) {
+    return new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log('Error:', error);
+                reject(error);
+            } else {
+                resolve(info);
+            }
+        });
+    });
+}
 
-module.exports = sendEmail;
+module.exports = { sendMailToUser, AUTH_EMAIL };
