@@ -32,7 +32,7 @@ async function loginUser(req, res) {
         if (!user) {
             return res.status(404).json({
                 status: false,
-                error: 'User not found'
+                message: 'User not found'
             });
         }
 
@@ -40,7 +40,7 @@ async function loginUser(req, res) {
         if (!passwordMatch) {
             return res.status(401).json({
                 status: false,
-                error: 'Invalid password'
+                message: 'Invalid password'
             });
         }
 
@@ -75,7 +75,7 @@ function logoutUser(req, res) {
 ===============================*/
 async function registerUser(req, res) {
     try {
-        const { email, password, role, data_info } = req.body;
+        const { email, password, role } = req.body;
 
         // kiểm tra xem email đã được sử dụng chưa
         const existingUser = await User.findOne({ $or: [{ email }] });
@@ -102,13 +102,6 @@ async function registerUser(req, res) {
             password: hashedPassword,
             role: role,
         });
-        
-        if (role === 'client') {
-            newUser.client_info = data_info;
-        } else if (role === 'organizer') {
-            newUser.organizer_info = data_info;
-               
-        }
 
         await newUser.save();
 
@@ -122,6 +115,7 @@ async function registerUser(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
 
 module.exports = {
     loginUser,
