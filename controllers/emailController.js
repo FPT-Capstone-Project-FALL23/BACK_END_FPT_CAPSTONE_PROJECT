@@ -33,7 +33,7 @@ async function sendOTPForMailRegister(req, res) {
         };
 
         sendMailToUser(mailOptions).then(() => {
-            res.json({ status: true, message: 'OTP sent successfully' });
+            res.json({ status: true, message: 'OTP đã được gửi thành công' });
         }).catch((error) => {
             res.json({ status: false, message: 'Error sending OTP' });
         });
@@ -54,19 +54,19 @@ async function verifileOTPRegister(req, res) {
 
         const storedData = otpStorage[email];
         if (!storedData) {
-            return res.json({ status: false, message: 'OTP not generated for this email' });
+            return res.json({ status: false, message: 'OTP không được tạo cho email này' });
         }
         const { otp, expirationTime } = storedData;
         const currentTime = Date.now();
 
         if (currentTime > expirationTime) {
             delete otpStorage[email]; // Remove expired OTP data
-            return res.json({ status: false, message: 'OTP has expired' });
+            return res.json({ status: false, message: 'OTP đã hết hạn' });
         }
 
         if (otp == enteredOTP) {
             // OTP matches and is not expired, do something (e.g., mark email as verified)
-            res.json({ status: true, message: 'OTP is valid' });
+            res.json({ status: true, message: 'OTP hợp lệ' });
             delete otpStorage[email]; // Remove expired OTP data
         } else {
             res.json({ status: false, message: 'Invalid OTP' });
