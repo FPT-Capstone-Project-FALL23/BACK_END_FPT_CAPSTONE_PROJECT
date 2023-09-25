@@ -4,6 +4,7 @@ const mongoose = require("mongoose")
 const cors = require('cors');
 const authRouter = require('./routes/authRoutes');
 const sendEmail = require('./routes/sendMailRoutes');
+const eventRouter = require('./routes/eventRoutes');
 
 const app = express();
 
@@ -14,6 +15,8 @@ app.use(express.json())
 app.use("/api/auth", authRouter);
 //route to api send mail
 app.use("/api/sendMail", sendEmail);
+//route api event
+app.use("/api/event", eventRouter);
 
 
 //Connect with monogdb

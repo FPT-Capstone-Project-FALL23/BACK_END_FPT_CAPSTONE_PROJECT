@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 
 //Define the schema for the Organizer collection
 const organizerSchema = new mongoose.Schema({
-    user_id: { type: mongoose.Schema.Types.ObjectId, },
+    user_id: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        require: true,
+    },
     organizer_name: { type: String },
     organizer_type: { type: String },
     phone: { type: String },
