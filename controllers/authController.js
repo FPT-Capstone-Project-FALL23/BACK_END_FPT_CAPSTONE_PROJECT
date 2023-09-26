@@ -244,12 +244,12 @@ async function createClient(req, res) {
             });
         }
 
-        const _idOfUser = (await isExists).user._id
+        const _idOfUser = isExists.user._id
 
         // Check if the client already exists for this user
         const clientExists = await checkExistsInCliensOrOrganizers(_idOfUser, true);
 
-        if (!clientExists.status) {
+        if (!clientExists.result.status) {
             return res.status(400).json({
                 status: clientExists.status,
                 message: clientExists.message,
@@ -297,7 +297,7 @@ async function createOrganizer(req, res) {
             });
         }
 
-        const _idOfUser = (await isExists).user._id
+        const _idOfUser = isExists.user._id
 
         // Check if the client already exists for this user
         const organizerExists = await checkExistsInCliensOrOrganizers(_idOfUser, false);
