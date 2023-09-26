@@ -68,13 +68,13 @@ async function loginUser(req, res) {
 ===============================*/
 async function verifyUserCredentials(email, password) {
     const user = await User.findOne({ email: email }); //Kiểm tra mail có đúng không
-    const passwordMatch = await bcrypt.compare(password, user.password); //Kiển tra password có đúng không
     if (!user) {
         return {
             status: false,
             message: 'Người dùng không tìm thấy'
         };
     }
+    const passwordMatch = await bcrypt.compare(password, user.password); //Kiển tra password có đúng không
     if (!passwordMatch) {
         return {
             status: false,
