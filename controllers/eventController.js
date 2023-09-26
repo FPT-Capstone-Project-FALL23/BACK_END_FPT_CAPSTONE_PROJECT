@@ -84,7 +84,7 @@ async function createEvent(req, res) {
 ===============================*/
 async function getAllEvents(req, res) {
     try {
-        const page = parseInt(req.query.page) || 1; // Trang hiện tại (mặc định là trang 1)
+        const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments(); // Tổng số sự kiện trong bảng
@@ -117,7 +117,7 @@ async function getEventsById(req, res) {
     try {
         const { _idOrganizer } = req.body;
 
-        const page = parseInt(req.query.page) || 1; // Trang hiện tại (mặc định là trang 1)
+        const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({organizer_id: _idOrganizer}); // Tổng số sự kiện trong bảng
@@ -154,7 +154,7 @@ async function getEventsById(req, res) {
 async function getEventByType(req, res) {
     try {
         const { type_of_event } = req.body;
-        const page = parseInt(req.query.page) || 1; // Trang hiện tại (mặc định là trang 1)
+        const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ type_of_event: type_of_event}); // Tổng số sự kiện trong bảng
