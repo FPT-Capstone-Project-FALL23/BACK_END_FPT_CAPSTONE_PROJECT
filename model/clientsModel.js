@@ -17,7 +17,11 @@ const ticketSchema = new mongoose.Schema({
 
 //Define the schema for the Client collection
 const clientSchema = new mongoose.Schema({
-    user_id: { type: mongoose.Schema.Types.ObjectId, },
+    user_id: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        require: true,
+    },
     full_name: { type: String },
     phone: { type: String },
     birthday: { type: Date },
