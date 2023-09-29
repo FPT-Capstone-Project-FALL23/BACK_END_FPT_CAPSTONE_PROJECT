@@ -51,7 +51,7 @@ async function createEvent(req, res) {
             });
         }
 
-        const _idOfOrganizer = (await isExists).organizer._id; //Chỗ này thấy hơi thừa, nên xóa không?
+        const _idOfOrganizer = (await isExists).organizer._id;
         //tao event
         const event = await Event.create({
             organizer_id: _idOfOrganizer,
