@@ -1,5 +1,19 @@
 const mongoose = require('mongoose');
 
+//Define the schema for the Areas
+const areasSchema = new mongoose.Schema({
+    name_areas: String,
+    total_row: Number,
+    rows: [{
+        row_name: String,
+        total_chair: Number,
+        chairs: [{
+            chair_number: String,
+            ticket_price: Number
+            }],
+    }],
+});
+
 //Define the schema for the Event
 const eventSchema = new mongoose.Schema({
     organizer_id: {
@@ -12,19 +26,7 @@ const eventSchema = new mongoose.Schema({
     event_date: [{ 
         day_number: Number,
         date: Date,
-        ticket_areas: [{
-            name_ticket_areas: String,
-            sections: [{
-                name_sections: String,
-                rows: [{
-                    row_name: String,
-                    chairs: [{
-                        chair_number: Number,
-                        ticket_price: Number
-                    }],
-                }],
-            }],
-        }],
+        event_areas: [areasSchema],
     }],
     event_location: { type: String},
     event_description: { type: String},
@@ -32,7 +34,6 @@ const eventSchema = new mongoose.Schema({
         start_sales_date: { type: Date},
         end_sales_date: { type: Date},
     },
-    event_areas: [{ type: String}],
 });
 
 // Create the event model
