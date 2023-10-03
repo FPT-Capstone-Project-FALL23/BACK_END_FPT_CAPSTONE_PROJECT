@@ -2,10 +2,10 @@
  const eventRouter = require("express").Router();
 
  eventRouter.post("/createEvent", createEvent),
- eventRouter.get("/getEvent", getAllEvents),
- eventRouter.get("/getEventById", getEventsById),
- eventRouter.get("/getEventByType", getEventByType),
- eventRouter.put("/updateEvent", updateEvent),
- eventRouter.get("/searchEvent", searchEvent)
+ eventRouter.post("/getEvent", getAllEvents),
+ eventRouter.post("/getEventById", getEventsById),
+ eventRouter.post("/getEventByType", getEventByType),
+ eventRouter.post("/updateEvent", updateEvent),
+ eventRouter.post("/searchEvent", searchEvent)
 
  module.exports = eventRouter

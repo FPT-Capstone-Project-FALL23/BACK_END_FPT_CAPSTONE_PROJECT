@@ -236,22 +236,25 @@ async function updateEvent(req, res) {
 /*=============================
 ## Name function: searchEvent
 ## Describe: tìm kiếm event
-## Params: các trường tìm kiếm: event_name, type_of_event, event_location, event_date, event_price (có thể để null vài trường hoặc tất cả)
+## Params: các trường tìm kiếm: event_name, type_of_event, event_location, event_date, ticket_price (có thể để null vài trường hoặc tất cả)
 ## Result: status, message, data
 ===============================*/
 async function searchEvent(req, res) {
     try {
-        const { event_name, type_of_event, event_location, event_date, event_price } = req.body;
+        const { event_name, type_of_event, event_location, event_date, ticket_price } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         
-
         // Xây dựng các điều kiện tìm kiếm
         const searchConditions = {};
 
         if (event_name) {
-            searchConditions.event_name = event_name;
+            const keywords = event_name.split(" "); // Tách từ khóa từ tên sự kiện
+            const regexKeywords = keywords.map((keyword) => {
+                return new RegExp(keyword, "i"); // Tạo biểu thức chính quy cho mỗi từ khóa
+            });
+            searchConditions.event_name = { $all: regexKeywords }; // Tìm kiếm các từ khóa trong tên sự kiện
         }
 
         if (type_of_event) {
@@ -263,16 +266,12 @@ async function searchEvent(req, res) {
         }
 
         if (event_date) {
-            // Tìm kiếm sự kiện dựa trên ngày
+            // Tìm kiếm sự kiện dựa trên ngày và giá vé
             searchConditions.event_date = {
-                $elemMatch: {
-                    date: new Date(event_date)
-                }
+              $elemMatch: {
+                date: new Date(event_date),
+              },
             };
-        }
-
-        if (event_price) {
-            searchConditions.event_price = event_price;
         }
 
         // Tìm kiếm sự kiện dựa trên các điều kiện
@@ -294,6 +293,24 @@ async function searchEvent(req, res) {
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
+    }
+}
+
+async function searchNameEvent(event_name) { 
+    const key = event_name.split(" ");
+    const regexKeywords = key.map((keys) => {
+        return new RegExp(keys, "i"); // Tạo biểu thức chính quy cho mỗi từ khóa
+    });
+    const events = await Event.find({ event_name: { $all: regexKeywords } });
+    if(!events) {
+        return {
+            status: false,
+            data: events
+        }
+    }
+    return {
+        status: true,
+        data: events
     }
 }
 
