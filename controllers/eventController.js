@@ -1,6 +1,6 @@
 const Organizer = require('../model/organizersModels');
 const Event = require('../model/eventModels');
-
+const unorm = require('unorm');
 
 /*=============================
 ## Name function: checkExistsIdOrganizer
@@ -23,6 +23,29 @@ async function checkExistsIdOrganizer(_id) {
     };
 }
 
+
+/*=============================
+## Name function: generateChairNumbers
+## Describe: generate chair numbers for a row
+## Params: row_name, total_chair
+## Result: data
+===============================*/
+function generateChairNumbers(row_name, total_chair) {
+    const chairObjects = [];
+
+    for (let i = 1; i <= total_chair; i++) {
+        const chair_name = `${row_name}${i}`;
+        const chairObject = {
+            chair_name: chair_name,
+            isBuy: false,
+            isCheckin: false,
+            client_id: null
+        };
+        chairObjects.push(chairObject);
+    }
+    return chairObjects;
+}
+
 /*=============================
 ## Name function: createEvent
 ## Describe: tạo event
@@ -33,13 +56,13 @@ async function createEvent(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const {
-            event_name, 
-            type_of_event, 
+            event_name,
+            type_of_event,
+            type_layout,
             event_date,
-            event_location, 
-            event_description, 
-            sales_date, 
-            event_areas 
+            event_location,
+            event_description,
+            sales_date
         } = req.body.eventInfo;
 
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
@@ -57,11 +80,31 @@ async function createEvent(req, res) {
             organizer_id: _idOfOrganizer,
             event_name: event_name,
             type_of_event: type_of_event,
-            event_date: event_date,
+            type_layout: type_layout,
+            event_date: event_date.map(eventDate => {
+                return {
+                    day_number: eventDate.day_number,
+                    date: eventDate.date,
+                    event_areas: eventDate.event_areas.map(eventArea => {
+                        return {
+                            name_areas: eventArea.name_areas,
+                            total_row: eventArea.total_row,
+                            rows: eventArea.rows.map(row => {
+                                const chairs = generateChairNumbers(row.row_name, row.total_chair);
+                                return {
+                                    row_name: row.row_name,
+                                    total_chair: row.total_chair,
+                                    ticket_price: row.ticket_price,
+                                    chairs: chairs
+                                };
+                            })
+                        };
+                    })
+                };
+            }),
             event_location: event_location,
             event_description: event_description,
             sales_date: sales_date,
-            event_areas: event_areas,
         });
 
         res.status(200).json({
@@ -72,7 +115,7 @@ async function createEvent(req, res) {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: error.message});
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -85,24 +128,25 @@ async function createEvent(req, res) {
 async function getAllEvents(req, res) {
     try {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments(); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
-        
+
         const events = await Event.find()
-        .skip(skip)
-        .limit(limit);
+            .skip(skip)
+            .limit(limit);
 
         res.json({
             events,
+            message: `Có ${totalEvents} sự kiện đã tìm thấy`,
             currentPage: page,
             totalPages,
-          }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
-    } 
+        }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
+    }
     catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: error.message});
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -117,11 +161,11 @@ async function getEventsById(req, res) {
         const { _idOrganizer } = req.body;
 
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
-        const totalEvents = await Event.countDocuments({organizer_id: _idOrganizer}); // Tổng số sự kiện trong bảng
+        const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
-        
+
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
 
         if (!isExists.status) {
@@ -133,19 +177,20 @@ async function getEventsById(req, res) {
 
         const _idOfOrganizer = (await isExists).organizer._id;
 
-        const events = await Event.find({organizer_id: _idOfOrganizer})
-        .skip(skip)
-        .limit(limit);
+        const events = await Event.find({ organizer_id: _idOfOrganizer })
+            .skip(skip)
+            .limit(limit);
 
         res.json({
             events,
+            message: `Có ${totalEvents} sự kiện đã tìm thấy`,
             currentPage: page,
             totalPages,
-          }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
-    } 
+        }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
+    }
     catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: error.message});
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -153,24 +198,25 @@ async function getEventByType(req, res) {
     try {
         const { type_of_event } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
-        const totalEvents = await Event.countDocuments({ type_of_event: type_of_event}); // Tổng số sự kiện trong bảng
+        const totalEvents = await Event.countDocuments({ type_of_event: type_of_event }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
-        
-        const events = await Event.find({ type_of_event: type_of_event})
-        .skip(skip)
-        .limit(limit); 
+
+        const events = await Event.find({ type_of_event: type_of_event })
+            .skip(skip)
+            .limit(limit);
 
         res.json({
             events,
+            message: `Có ${totalEvents} sự kiện đã tìm thấy`,
             currentPage: page,
             totalPages,
         }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
-    } 
+    }
     catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: error.message});
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -185,16 +231,16 @@ async function updateEvent(req, res) {
         const { _idEvent } = req.body;
         const { _idOrganizer } = req.body;
         const {
-            event_name, 
-            type_of_event, 
+            event_name,
+            type_of_event,
+            type_layout,
             event_date,
-            event_location, 
-            event_description, 
-            sales_date, 
-            event_areas 
+            event_location,
+            event_description,
+            sales_date
         } = req.body.eventInfo;
 
-         // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
+        // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
         const event = await Event.findById(_idEvent);
         if (!event) {
             return res.status(400).json({
@@ -208,15 +254,35 @@ async function updateEvent(req, res) {
                 message: 'Bạn không có quyền chỉnh sửa sự kiện này',
             });
         }
-        
+
         // Cập nhật thông tin sự kiện
         event.event_name = event_name;
         event.type_of_event = type_of_event;
-        event.event_date = event_date;
+        event.type_layout = type_layout;
+        event.event_date = event_date.map(eventDate => {
+            return {
+                day_number: eventDate.day_number,
+                date: eventDate.date,
+                event_areas: eventDate.event_areas.map(eventArea => {
+                    return {
+                        name_areas: eventArea.name_areas,
+                        total_row: eventArea.total_row,
+                        rows: eventArea.rows.map(row => {
+                            const chairs = generateChairNumbers(row.row_name, row.total_chair);
+                            return {
+                                row_name: row.row_name,
+                                total_chair: row.total_chair,
+                                ticket_price: row.ticket_price,
+                                chairs: chairs
+                            };
+                        })
+                    };
+                })
+            };
+        });
         event.event_location = event_location;
         event.event_description = event_description;
         event.sales_date = sales_date;
-        event.event_areas = event_areas;
 
         // Lưu sự kiện đã cập nhật
         const updatedEvent = await event.save();
@@ -229,23 +295,23 @@ async function updateEvent(req, res) {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: error.message});
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
 /*=============================
 ## Name function: searchEvent
 ## Describe: tìm kiếm event
-## Params: các trường tìm kiếm: event_name, type_of_event, event_location, event_date, ticket_price (có thể để null vài trường hoặc tất cả)
+## Params: các trường tìm kiếm: event_name, type_of_event, event_location, event_date (có thể để null vài trường hoặc tất cả)
 ## Result: status, message, data
 ===============================*/
 async function searchEvent(req, res) {
     try {
-        const { event_name, type_of_event, event_location, event_date, ticket_price } = req.body;
+        const { event_name, type_of_event, event_location, event_date } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
-        
+
         // Xây dựng các điều kiện tìm kiếm
         const searchConditions = {};
 
@@ -262,23 +328,28 @@ async function searchEvent(req, res) {
         }
 
         if (event_location) {
-            searchConditions.event_location = event_location;
+            const keywords = event_location.split(" ");
+            const regexKeywords = keywords.map((keyword) => {
+                const keywordNormalized = unorm.nfkd(keyword).replace(/[\u0300-\u036f]/g, ""); // Chuẩn hóa và loại bỏ dấu tiếng Việt từ từ khóa
+                return new RegExp(keywordNormalized, "i");
+            });
+            searchConditions.event_location = { $in: regexKeywords };
         }
 
         if (event_date) {
-            // Tìm kiếm sự kiện dựa trên ngày và giá vé
+            // Tìm kiếm sự kiện dựa trên ngày 
             searchConditions.event_date = {
-              $elemMatch: {
-                date: new Date(event_date),
-              },
+                $elemMatch: {
+                    date: new Date(event_date),
+                },
             };
         }
 
         // Tìm kiếm sự kiện dựa trên các điều kiện
         const events = await Event.find(searchConditions)
-        .skip(skip)
-        .limit(limit);
-        
+            .skip(skip)
+            .limit(limit);
+
         const totalEvents = await Event.countDocuments(searchConditions); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
 
@@ -289,28 +360,59 @@ async function searchEvent(req, res) {
             totalPages,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
         });
-        
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
     }
 }
 
-async function searchNameEvent(event_name) { 
-    const key = event_name.split(" ");
-    const regexKeywords = key.map((keys) => {
-        return new RegExp(keys, "i"); // Tạo biểu thức chính quy cho mỗi từ khóa
-    });
-    const events = await Event.find({ event_name: { $all: regexKeywords } });
-    if(!events) {
-        return {
-            status: false,
-            data: events
+async function totalMoney(req, res) {
+    try {
+        const { _idEvent } = req.body;
+
+        // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
+        const events = await Event.findById(_idEvent);
+        if (!events) {
+            return res.status(400).json({
+                status: false,
+                message: 'Sự kiện không tồn tại',
+            });
         }
+
+        const event = await Event.findById(_idEvent).populate('event_date.event_areas.rows');
+
+        let totalSeatsByArea = {};
+        let totalAmount = 0;
+
+        // Lặp qua các khu vực
+        for (const area of event.event_date[0].event_areas) {
+            const areaName = area.name_areas;
+            let seatsInArea = 0;
+
+            // Lặp qua các hàng trong khu vực
+            for (const row of area.rows) {
+                seatsInArea += row.total_chair;
+            }
+
+            totalSeatsByArea[areaName] = seatsInArea;
+        }
+
+        // Tính tổng tiền
+        for (const area of event.event_date[0].event_areas) {
+            for (const row of area.rows) {
+                totalAmount += row.total_chair * row.ticket_price;
+            }
+        }
+
+        res.json({
+            totalSeatsByArea,
+            message: `Tổng tiền dự kiến ${totalAmount}`,
+        }); // Trả về tổng số ghế theo khu vực và tổng tiền dưới dạng JSON
     }
-    return {
-        status: true,
-        data: events
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -320,5 +422,6 @@ module.exports = {
     getEventsById,
     getEventByType,
     updateEvent,
-    searchEvent
+    searchEvent,
+    totalMoney
 };
