@@ -166,6 +166,37 @@ async function registerUser(req, res) {
 }
 
 /*=============================
+## Name function: resetPassword
+## Describe: Đặt lại mật khẩu cho người dùng
+## Params: email, newPassword
+## Result: status, message
+===============================*/
+async function resetPassword(req, res) {
+    try {
+        const { email, newPassword } = req.body;
+
+        // Kiểm tra xem email có tồn tại trong hệ thống hay không
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).json({
+                status: false,
+                message: 'Email không tồn tại'
+            });
+        }
+        
+        // Hash mật khẩu trước khi lưu nó
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Thực hiện thay đổi mật khẩu cho người dùng
+        existingUser.password = hashedPassword;
+        await existingUser.save();
+
+        res.json({ status: true, message: 'Đặt lại mật khẩu thành công' });
+    } catch (err) {
+        res.json({ status: false, message: 'Lỗi', error: err });
+    }
+}
+
+/*=============================
 ## Name function: checkExistsIdUser
 ## Describe: Xử lý xem _id có tồn tại ở User không
 ## Params: _id
@@ -286,7 +317,7 @@ async function createClient(req, res) {
 async function createOrganizer(req, res) {
     try {
         const { _idUser } = req.body;
-        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -313,6 +344,7 @@ async function createOrganizer(req, res) {
         const organizer = await Organizer.create({
             user_id: _idOfUser,
             organizer_name: organizer_name,
+            avatarImage: avatarImage,
             organizer_type: organizer_type,
             phone: phone,
             website: website,
@@ -339,5 +371,6 @@ module.exports = {
     logoutUser,
     registerUser,
     createClient,
-    createOrganizer
+    createOrganizer,
+    resetPassword
 };
