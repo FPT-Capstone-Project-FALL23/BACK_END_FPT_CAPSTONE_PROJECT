@@ -361,7 +361,7 @@ async function updateClient(req, res) {
 async function createOrganizer(req, res) {
     try {
         const { _idUser } = req.body;
-        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -388,6 +388,7 @@ async function createOrganizer(req, res) {
         const organizer = await Organizer.create({
             user_id: _idOfUser,
             organizer_name: organizer_name,
+            avatarImage: avatarImage,
             organizer_type: organizer_type,
             phone: phone,
             website: website,
@@ -418,7 +419,7 @@ async function createOrganizer(req, res) {
 async function updateOrganizer(req, res) {
     try {
         const { _idUser } = req.body;
-        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
         
         // Kiểm tra sự tồn tại của organizer
@@ -432,6 +433,7 @@ async function updateOrganizer(req, res) {
        
         // Cập nhật thông tin organizer
         organizer.organizer_name = organizer_name,
+        organizer.avatarImage = avatarImage,
         organizer.organizer_type = organizer_type,
         organizer.phone = phone,
         organizer.website = website,
