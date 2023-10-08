@@ -164,7 +164,6 @@ async function registerUser(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
-
 /*=============================
 ## Name function: resetPassword
 ## Describe: Đặt lại mật khẩu cho người dùng
@@ -309,6 +308,51 @@ async function createClient(req, res) {
 }
 
 /*=============================
+## Name function: updateClient
+## Describe: cập nhật client khi đã đăng nhập
+## Params: _idUser, clientInfo
+## Result: status, message, data
+===============================*/
+async function updateClient(req, res) {
+    try {
+        const { _idUser } = req.body;
+        const { full_name, phone, birthday, gender, avatarImage } = req.body.clientInfo;
+        
+        // Kiểm tra sự tồn tại của client
+        const client = await Client.findById(_idUser);
+        if (!client) {
+            return res.status(400).json({
+                status: false,
+                message: 'Client không tồn tại',
+            });
+        }
+       
+        // Cập nhật thông tin client
+        client.full_name = full_name;
+        client.phone = phone;
+        client.birthday = birthday;
+        client.gender = gender;
+        client.avatarImage = avatarImage;
+        
+        // Lưu client đã cập nhật
+        const updatedClient = await client.save();
+
+        res.status(200).json({
+            status: true,
+            data: updatedClient,
+            message: 'Cập nhật client thành công',
+        });
+
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ status: false, message: 'server error, try after some time'  });
+        console.log('Error while uploading profile image', error.message);
+    }
+}
+
+
+
+/*=============================
 ## Name function: createOrganizers
 ## Describe: tạo organizer khi đăng kí
 ## Params: _idUser, organizerInfo
@@ -366,11 +410,62 @@ async function createOrganizer(req, res) {
     }
 }
 
+/*=============================
+## Name function: updateOrganizer
+## Describe: cập nhật Organizer khi đã đăng nhập
+## Params: _idUser, OrganizerInfo
+## Result: status, message, data
+===============================*/
+async function updateOrganizer(req, res) {
+    try {
+        const { _idUser } = req.body;
+        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+
+        
+        // Kiểm tra sự tồn tại của organizer
+        const organizer = await organizer.findById(_idUser);
+        if (!organizer) {
+            return res.status(400).json({
+                status: false,
+                message: 'Organizer không tồn tại',
+            });
+        }
+       
+        // Cập nhật thông tin organizer
+        organizer.organizer_name = organizer_name,
+        organizer.avatarImage = avatarImage,
+        organizer.organizer_type = organizer_type,
+        organizer.phone = phone,
+        organizer.website = website,
+        organizer.founded_date = founded_date,
+        organizer.isActive = isActive,
+        organizer.description = description,
+        organizer.address = address
+        
+        // Lưu organizer đã cập nhật
+        const updateOrganizer = await organizer.save();
+
+        res.status(200).json({
+            status: true,
+            data: updateOrganizer,
+            message: 'Cập nhật organizer thành công',
+        });
+
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ status: false, message: 'server error, try after some time'  });
+        console.log('Error while uploading profile image', error.message);
+    }
+}
+
 module.exports = {
     loginUser,
     logoutUser,
     registerUser,
+    resetPassword,
     createClient,
     createOrganizer,
-    resetPassword
+    updateClient,
+    updateOrganizer
+    
 };
