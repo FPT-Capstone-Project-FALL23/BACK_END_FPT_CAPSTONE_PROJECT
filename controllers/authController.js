@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../model/usersModel');
 const Client = require('../model/clientsModel');
 const Organizer = require('../model/organizersModels');
+const cloudinary = require('../config/cloudinary')
 
 
 /*=============================
@@ -182,7 +183,7 @@ async function resetPassword(req, res) {
                 message: 'Email không tồn tại'
             });
         }
-        
+
         // Hash mật khẩu trước khi lưu nó
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         // Thực hiện thay đổi mật khẩu cho người dùng
@@ -301,8 +302,8 @@ async function defaulResultCheckExist(data, nameRole) {
 ===============================*/
 async function createClient(req, res) {
     try {
-        const { _idUser } = req.body;
-        const { full_name, phone, birthday, gender, avatarImage } = req.body.clientInfo;
+        const { _idUser, avatarImage } = req.body;
+        const { full_name, phone, birthday, gender } = req.body.clientInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -324,16 +325,31 @@ async function createClient(req, res) {
                 message: clientExists.message,
             });
         }
-        //Tạo Client 
-        const client = await Client.create({
+        var clientInfo = {
             user_id: _idOfUser,
             full_name: full_name,
             phone: phone,
             birthday: birthday,
             gender: gender,
-            avatarImage: avatarImage,
-        });
+            avatarImage: "",
+        }
 
+
+        if (!avatarImage) {
+            clientInfo["avatarImage"] = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+        }
+        else {
+            const uploadRes = await cloudinary.uploader.upload(avatarImage, {
+                ublic_id: `${Date.now()}`,
+                upload_preset: "clientOnline"
+            })
+            console.log("uploadRes", uploadRes);
+            const urlAvatar = uploadRes.url;
+            clientInfo["avatarImage"] = urlAvatar
+        }
+        console.log("clientInfo", clientInfo)
+        const client = createDataClientOROrganizer(true, clientInfo);
+        console.log("client", client)
         res.status(200).json({
             status: true,
             data: client,
@@ -345,6 +361,28 @@ async function createClient(req, res) {
         res.status(500).json({ status: false, message: error.message });
     }
 }
+
+
+/*=============================
+## Name function: createDataClientOROrganizer
+## Describe: tạo client or Organizer khi đăng kí
+## Params: isClient, finalData
+## Result: client, message, data
+===============================*/
+async function createDataClientOROrganizer(isClient, finalData) {
+    if (isClient) {
+        const client = await Client.create({
+            user_id: finalData._idOfUser,
+            full_name: finalData.full_name,
+            phone: finalData.phone,
+            birthday: finalData.birthday,
+            gender: finalData.gender,
+            avatarImage: finalData.avatarImage,
+        });
+        return { client };
+    }
+}
+
 
 /*=============================
 ## Name function: updateClient

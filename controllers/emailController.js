@@ -19,7 +19,7 @@ async function sendOTPForMailRegister(req, res) {
         // kiểm tra xem email đã được sử dụng chưa
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(409).json({
+            return res.status(400).json({
                 status: false,
                 message: 'Email đã tồn tại'
             });
@@ -48,6 +48,48 @@ async function sendOTPForMailRegister(req, res) {
                 res.json({ status: false, message: 'Error sending OTP' });
             });
         }
+    } catch (err) {
+        res.json({ status: 'False', message: "Lỗi ", err });
+    }
+}
+
+/*=============================
+## Name function: resendOTPForMail
+## Describe: Resend mail otp khi user chọn resend
+## Params: email
+## Result: status, message
+===============================*/
+async function resendOTPForMail(req, res) {
+    try {
+        const { email } = req.body;
+        const storedData = otpStorage[email];
+        const currentTime = Date.now();
+        const { expirationTime } = storedData;
+
+        if (currentTime < expirationTime) {
+            delete otpStorage[email]; // Remove expired OTP data
+        }
+        const generOTP = generateOTP();
+        const otp = generOTP.otp;
+        const resendExpirationTime = generOTP.expirationTime;
+        otpStorage[email] = { otp, resendExpirationTime }; //Lưu trữ OTP và time để xác thực sau
+
+        const mailOptions = {
+            from: AUTH_EMAIL,
+            to: email,
+            subject: 'TIKSEAT: Mã OTP để xác minh tài khoản',
+            html: `<p>Mã xác minh tài khoản Tikseat của bạn là:</p>
+            <p style="color:tomato;font-size:25px;letter-spacing:2px;">
+            <b>${otp}</b>
+            </p>
+            <p>Có hiệu lực trong <b>3 phút.</b>.KHÔNG chia sẻ mã này với người khác</p>`,
+        };
+
+        sendMailToUser(mailOptions).then(() => {
+            res.json({ status: true, message: 'OTP đã được gửi thành công' });
+        }).catch((error) => {
+            res.json({ status: false, message: 'Error sending OTP' });
+        });
     } catch (err) {
         res.json({ status: 'False', message: "Lỗi ", err });
     }
@@ -134,4 +176,4 @@ async function verifileOTPRegister(req, res) {
     }
 }
 
-module.exports = { sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister };
+module.exports = { sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister, resendOTPForMail };

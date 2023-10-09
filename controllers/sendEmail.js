@@ -1,7 +1,8 @@
 const nodemailer = require('nodemailer');
+const dotenv = require('dotenv').config();
 
-const AUTH_EMAIL = "tikseat.fall2023@gmail.com";
-const AUTH_PASS = "lfcgmaqhavidpixc"; // mật khẩu ứng dụng
+const AUTH_EMAIL = process.env.AUTH_EMAIL;
+// const AUTH_PASS = "lfcgmaqhavidpixc"; // mật khẩu ứng dụng
 // const PASS = "tikseat123456@" //mậu khẩu để vào mail tikseat.fall2023@gmail.com
 
 
@@ -15,7 +16,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: AUTH_EMAIL, // Địa chỉ email của bạn
-        pass: AUTH_PASS // Mật khẩu email của bạn
+        pass: process.env.AUTH_PASS // Mật khẩu email của bạn
     }
 });
 
