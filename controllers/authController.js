@@ -196,6 +196,45 @@ async function resetPassword(req, res) {
 }
 
 /*=============================
+## Name function: changePassword
+## Describe: Thay đổi  mật khẩu cho người dùng
+## Params: email, newPassword
+## Result: status, message
+===============================*/
+async function changePassword(req, res) {
+    try {
+        const { email, oldPassword, newPassword } = req.body;
+
+        // Kiểm tra xem email có tồn tại trong hệ thống hay không
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).json({
+                status: false,
+                message: 'Email không tồn tại'
+            });
+        }
+         // So sánh mật khẩu cũ
+         const isPasswordMatch = await bcrypt.compare(oldPassword, existingUser.password);
+         if (!isPasswordMatch) {
+             return res.status(400).json({
+                 status: false,
+                 message: 'Mật khẩu cũ không khớp'
+             });
+         }
+        // Hash mật khẩu trước khi lưu nó
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        // Cập nhật mật khẩu mới cho người dùng
+        existingUser.password = hashedPassword;
+        await existingUser.save();
+
+        res.json({ status: true, message: 'Thay đổi mật khẩu thành công' });
+    } catch (err) {
+        res.json({ status: false, message: 'Lỗi', error: err });
+    }
+}
+
+/*=============================
 ## Name function: checkExistsIdUser
 ## Describe: Xử lý xem _id có tồn tại ở User không
 ## Params: _id
@@ -463,6 +502,7 @@ module.exports = {
     logoutUser,
     registerUser,
     resetPassword,
+    changePassword,
     createClient,
     createOrganizer,
     updateClient,
