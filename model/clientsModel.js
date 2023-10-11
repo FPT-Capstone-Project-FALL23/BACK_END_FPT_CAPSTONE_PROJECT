@@ -17,7 +17,7 @@ const ticketSchema = new mongoose.Schema({
 
 //Define the schema for the Client collection
 const clientSchema = new mongoose.Schema({
-    user_id: { 
+    user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         require: true,
@@ -25,9 +25,10 @@ const clientSchema = new mongoose.Schema({
     full_name: { type: String },
     phone: { type: String },
     birthday: { type: Date },
-    gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+    gender: { type: String },
     avatarImage: { type: String },
-    purchased_tickets: [ticketSchema]
+    purchased_tickets: [ticketSchema],
+    favorit_enres: { type: [String], }
 });
 
 // Create the Client model

@@ -43,13 +43,13 @@ async function sendOTPForMailRegister(req, res) {
             };
 
             sendMailToUser(mailOptions).then(() => {
-                res.json({ status: true, message: 'OTP đã được gửi thành công' });
+                res.status(200).json({ status: true, message: 'OTP đã được gửi thành công' });
             }).catch((error) => {
-                res.json({ status: false, message: 'Error sending OTP' });
+                res.status(400).json({ status: false, message: 'Error sending OTP' });
             });
         }
     } catch (err) {
-        res.json({ status: 'False', message: "Lỗi ", err });
+        res.status(500).json({ status: 'False', message: "Lỗi ", err });
     }
 }
 
@@ -64,10 +64,12 @@ async function resendOTPForMail(req, res) {
         const { email } = req.body;
         const storedData = otpStorage[email];
         const currentTime = Date.now();
-        const { expirationTime } = storedData;
 
-        if (currentTime < expirationTime) {
-            delete otpStorage[email]; // Remove expired OTP data
+        if (storedData) {
+            const { expirationTime } = storedData;
+            if (currentTime < expirationTime) {
+                delete otpStorage[email]; // Remove expired OTP data
+            }
         }
         const generOTP = generateOTP();
         const otp = generOTP.otp;
@@ -86,12 +88,12 @@ async function resendOTPForMail(req, res) {
         };
 
         sendMailToUser(mailOptions).then(() => {
-            res.json({ status: true, message: 'OTP đã được gửi thành công' });
+            res.status(200).json({ status: true, message: 'OTP đã được gửi thành công' });
         }).catch((error) => {
-            res.json({ status: false, message: 'Error sending OTP' });
+            res.status(400).json({ status: false, message: 'Error sending OTP' });
         });
     } catch (err) {
-        res.json({ status: 'False', message: "Lỗi ", err });
+        res.status(500).json({ status: 'False', message: "Lỗi ", err });
     }
 }
 
@@ -154,25 +156,25 @@ async function verifileOTPRegister(req, res) {
 
         const storedData = otpStorage[email];
         if (!storedData) {
-            return res.json({ status: false, message: 'OTP không được tạo cho email này' });
+            return res.status(400).json({ status: false, message: 'OTP không được tạo cho email này' });
         }
         const { otp, expirationTime } = storedData;
         const currentTime = Date.now();
 
         if (currentTime > expirationTime) {
             delete otpStorage[email]; // Remove expired OTP data
-            return res.json({ status: false, message: 'OTP đã hết hạn' });
+            return res.status(400).json({ status: false, message: 'OTP đã hết hạn' });
         }
 
         if (otp == enteredOTP) {
             // OTP matches and is not expired, do something (e.g., mark email as verified)
-            res.json({ status: true, message: 'OTP hợp lệ' });
+            res.status(200).json({ status: true, message: 'OTP hợp lệ' });
             delete otpStorage[email]; // Remove expired OTP data
         } else {
-            res.json({ status: false, message: 'Invalid OTP' });
+            res.status(400).json({ status: false, message: 'Invalid OTP' });
         }
     } catch (err) {
-        res.json({ status: 'False', message: "Lỗi ", err });
+        res.status(500).json({ status: 'False', message: "Lỗi ", err });
     }
 }
 

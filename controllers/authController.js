@@ -303,7 +303,7 @@ async function defaulResultCheckExist(data, nameRole) {
 async function createClient(req, res) {
     try {
         const { _idUser, avatarImage } = req.body;
-        const { full_name, phone, birthday, gender } = req.body.clientInfo;
+        const { full_name, phone, birthday, gender, favorit_enres } = req.body.clientInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -345,6 +345,7 @@ async function createClient(req, res) {
             birthday: birthday,
             gender: gender,
             avatarImage: urlImageAvatar,
+            favorit_enres: favorit_enres,
         });
         res.status(200).json({
             status: true,
