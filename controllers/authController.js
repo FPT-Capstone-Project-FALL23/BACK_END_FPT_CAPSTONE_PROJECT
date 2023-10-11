@@ -214,17 +214,17 @@ async function changePassword(req, res) {
                 message: 'Email không tồn tại'
             });
         }
-         // So sánh mật khẩu cũ
-         const isPasswordMatch = await bcrypt.compare(oldPassword, existingUser.password);
-         if (!isPasswordMatch) {
-             return res.status(400).json({
-                 status: false,
-                 message: 'Mật khẩu cũ không khớp'
-             });
-         }
+        // So sánh mật khẩu cũ
+        const isPasswordMatch = await bcrypt.compare(oldPassword, existingUser.password);
+        if (!isPasswordMatch) {
+            return res.status(400).json({
+                status: false,
+                message: 'Mật khẩu cũ không khớp'
+            });
+        }
         // Hash mật khẩu trước khi lưu nó
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        
+
         // Cập nhật mật khẩu mới cho người dùng
         existingUser.password = hashedPassword;
         await existingUser.save();
@@ -325,31 +325,27 @@ async function createClient(req, res) {
                 message: clientExists.message,
             });
         }
-        var clientInfo = {
-            user_id: _idOfUser,
-            full_name: full_name,
-            phone: phone,
-            birthday: birthday,
-            gender: gender,
-            avatarImage: "",
-        }
-
-
+        let urlImageAvatar;
         if (!avatarImage) {
-            clientInfo["avatarImage"] = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
         }
         else {
             const uploadRes = await cloudinary.uploader.upload(avatarImage, {
                 ublic_id: `${Date.now()}`,
                 upload_preset: "clientOnline"
             })
-            console.log("uploadRes", uploadRes);
             const urlAvatar = uploadRes.url;
-            clientInfo["avatarImage"] = urlAvatar
+            urlImageAvatar = urlAvatar
         }
-        console.log("clientInfo", clientInfo)
-        const client = createDataClientOROrganizer(true, clientInfo);
-        console.log("client", client)
+        // const client = createDataClientOROrganizer(true, clientInfo);
+        const client = await Client.create({
+            user_id: _idOfUser,
+            full_name: full_name,
+            phone: phone,
+            birthday: birthday,
+            gender: gender,
+            avatarImage: urlImageAvatar,
+        });
         res.status(200).json({
             status: true,
             data: client,
@@ -362,28 +358,6 @@ async function createClient(req, res) {
     }
 }
 
-
-/*=============================
-## Name function: createDataClientOROrganizer
-## Describe: tạo client or Organizer khi đăng kí
-## Params: isClient, finalData
-## Result: client, message, data
-===============================*/
-async function createDataClientOROrganizer(isClient, finalData) {
-    if (isClient) {
-        const client = await Client.create({
-            user_id: finalData._idOfUser,
-            full_name: finalData.full_name,
-            phone: finalData.phone,
-            birthday: finalData.birthday,
-            gender: finalData.gender,
-            avatarImage: finalData.avatarImage,
-        });
-        return { client };
-    }
-}
-
-
 /*=============================
 ## Name function: updateClient
 ## Describe: cập nhật client khi đã đăng nhập
@@ -392,9 +366,9 @@ async function createDataClientOROrganizer(isClient, finalData) {
 ===============================*/
 async function updateClient(req, res) {
     try {
-        const { _idUser } = req.body;
-        const { full_name, phone, birthday, gender, avatarImage } = req.body.clientInfo;
-        
+        const { _idUser, avatarImage } = req.body;
+        const { full_name, phone, birthday, gender } = req.body.clientInfo;
+
         // Kiểm tra sự tồn tại của client
         const client = await Client.findById(_idUser);
         if (!client) {
@@ -403,14 +377,14 @@ async function updateClient(req, res) {
                 message: 'Client không tồn tại',
             });
         }
-       
+
         // Cập nhật thông tin client
         client.full_name = full_name;
         client.phone = phone;
         client.birthday = birthday;
         client.gender = gender;
         client.avatarImage = avatarImage;
-        
+
         // Lưu client đã cập nhật
         const updatedClient = await client.save();
 
@@ -420,14 +394,12 @@ async function updateClient(req, res) {
             message: 'Cập nhật client thành công',
         });
 
-    }catch(error){
+    } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'server error, try after some time'  });
+        res.status(500).json({ status: false, message: 'server error, try after some time' });
         console.log('Error while uploading profile image', error.message);
     }
 }
-
-
 
 /*=============================
 ## Name function: createOrganizers
@@ -437,8 +409,8 @@ async function updateClient(req, res) {
 ===============================*/
 async function createOrganizer(req, res) {
     try {
-        const { _idUser } = req.body;
-        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { _idUser, avatarImage } = req.body;
+        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -460,12 +432,24 @@ async function createOrganizer(req, res) {
                 message: organizerExists.result.message,
             });
         }
+        let urlImageAvatar;
+        if (!avatarImage) {
+            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+        }
+        else {
+            const uploadRes = await cloudinary.uploader.upload(avatarImage, {
+                ublic_id: `${Date.now()}`,
+                upload_preset: "clientOnline"
+            })
+            const urlAvatar = uploadRes.url;
+            urlImageAvatar = urlAvatar
+        }
 
         //Tạo Organizer 
         const organizer = await Organizer.create({
             user_id: _idOfUser,
             organizer_name: organizer_name,
-            avatarImage: avatarImage,
+            avatarImage: urlImageAvatar,
             organizer_type: organizer_type,
             phone: phone,
             website: website,
@@ -495,10 +479,10 @@ async function createOrganizer(req, res) {
 ===============================*/
 async function updateOrganizer(req, res) {
     try {
-        const { _idUser } = req.body;
-        const { organizer_name, avatarImage, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { _idUser, avatarImage } = req.body;
+        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
-        
+
         // Kiểm tra sự tồn tại của organizer
         const organizer = await organizer.findById(_idUser);
         if (!organizer) {
@@ -507,18 +491,18 @@ async function updateOrganizer(req, res) {
                 message: 'Organizer không tồn tại',
             });
         }
-       
+
         // Cập nhật thông tin organizer
         organizer.organizer_name = organizer_name,
-        organizer.avatarImage = avatarImage,
-        organizer.organizer_type = organizer_type,
-        organizer.phone = phone,
-        organizer.website = website,
-        organizer.founded_date = founded_date,
-        organizer.isActive = isActive,
-        organizer.description = description,
-        organizer.address = address
-        
+            organizer.avatarImage = avatarImage,
+            organizer.organizer_type = organizer_type,
+            organizer.phone = phone,
+            organizer.website = website,
+            organizer.founded_date = founded_date,
+            organizer.isActive = isActive,
+            organizer.description = description,
+            organizer.address = address
+
         // Lưu organizer đã cập nhật
         const updateOrganizer = await organizer.save();
 
@@ -528,9 +512,9 @@ async function updateOrganizer(req, res) {
             message: 'Cập nhật organizer thành công',
         });
 
-    }catch(error){
+    } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'server error, try after some time'  });
+        res.status(500).json({ status: false, message: 'server error, try after some time' });
         console.log('Error while uploading profile image', error.message);
     }
 }
@@ -545,5 +529,4 @@ module.exports = {
     createOrganizer,
     updateClient,
     updateOrganizer
-    
 };
