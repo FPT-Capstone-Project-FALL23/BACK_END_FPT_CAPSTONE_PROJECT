@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../model/usersModel');
 const Client = require('../model/clientsModel');
 const Organizer = require('../model/organizersModels');
-const cloudinary = require('../config/cloudinary')
+const cloudinary = require('../config/cloudinary');
 
 
 /*=============================
@@ -268,7 +268,7 @@ async function checkExistsInCliensOrOrganizers(userId, isClient) {
         const result = await defaulResultCheckExist(client, "Client")
         return { result }
     } else {
-        const organizers = await Organizer.findOne({ user_id: userId });//Kiểm tra _id đã tồn tại trong client
+        const organizers = await Organizer.findOne({ user_id: userId });//Kiểm tra _id đã tồn tại trong Organizer
         const result = await defaulResultCheckExist(organizers, "Organizers")
         return { result }
     }
@@ -284,16 +284,32 @@ async function checkExistsInCliensOrOrganizers(userId, isClient) {
 async function defaulResultCheckExist(data, nameRole) {
     if (data) {
         return {
-            message: `${nameRole}đã tồn tại id user`,
+            message: `${nameRole} đã tồn tại id user`,
             status: false
         };
     }
     return {
         status: true,
-        message: `${nameRole}không tồn tại với id User`,
+        message: `${nameRole} không tồn tại với id User`,
     };
 }
 
+/*=============================
+## Name function: upLoadImg
+## Describe: upload image
+## Params: image, name_file
+## Result: data: urlAvatar
+===============================*/
+async function upLoadImg(image, name_file) {
+    const uploadRes = await cloudinary.uploader.upload(image, {
+        ublic_id: `${Date.now()}`,
+        upload_preset: `${name_file}`
+    })
+    const urlAvatar = uploadRes.url;
+    return {
+        urlAvatar
+    }
+}
 /*=============================
 ## Name function: createClient
 ## Describe: tạo Client khi đăng kí
@@ -327,17 +343,13 @@ async function createClient(req, res) {
         }
         let urlImageAvatar;
         if (!avatarImage) {
-            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
         }
         else {
-            const uploadRes = await cloudinary.uploader.upload(avatarImage, {
-                ublic_id: `${Date.now()}`,
-                upload_preset: "clientOnline"
-            })
-            const urlAvatar = uploadRes.url;
-            urlImageAvatar = urlAvatar
+            const dataImgBeforUpload = upLoadImg(avatarImage, "clientOnline");
+            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlAvatar);
+            urlImageAvatar = (await dataImgBeforUpload).urlAvatar;
         }
-        // const client = createDataClientOROrganizer(true, clientInfo);
         const client = await Client.create({
             user_id: _idOfUser,
             full_name: full_name,
@@ -438,14 +450,10 @@ async function createOrganizer(req, res) {
             urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
         }
         else {
-            const uploadRes = await cloudinary.uploader.upload(avatarImage, {
-                ublic_id: `${Date.now()}`,
-                upload_preset: "clientOnline"
-            })
-            const urlAvatar = uploadRes.url;
-            urlImageAvatar = urlAvatar
+            const dataImgBeforUpload = upLoadImg(avatarImage, "organizerOnline");
+            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlAvatar);
+            urlImageAvatar = (await dataImgBeforUpload).urlAvatar;
         }
-
         //Tạo Organizer 
         const organizer = await Organizer.create({
             user_id: _idOfUser,
