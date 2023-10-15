@@ -88,7 +88,6 @@ async function createEvent(req, res) {
                     event_areas: eventDate.event_areas.map(eventArea => {
                         return {
                             name_areas: eventArea.name_areas,
-                            total_row: eventArea.total_row,
                             rows: eventArea.rows.map(row => {
                                 const chairs = generateChairNumbers(row.row_name, row.total_chair);
                                 return {

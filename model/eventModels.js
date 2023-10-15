@@ -29,7 +29,6 @@ const chairSchema = new mongoose.Schema({
 //Define the schema for the Areas
 const areasSchema = new mongoose.Schema({
     name_areas: String,
-    total_row: Number,
     rows: [{
         row_name: String,
         total_chair: Number,
@@ -56,7 +55,12 @@ const eventSchema = new mongoose.Schema({
         date: Date,
         event_areas: [areasSchema],
     }],
-    event_location: { type: String},
+    event_location: {
+        city: { type: String },
+        district: { type: String },
+        ward: { type: String },
+        specific_address: { type: String },
+    },
     event_description: { type: String},
     sales_date: {
         start_sales_date: { type: Date},
