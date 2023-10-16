@@ -29,6 +29,7 @@ const chairSchema = new mongoose.Schema({
 //Define the schema for the Areas
 const areasSchema = new mongoose.Schema({
     name_areas: String,
+    total_row: Number,
     rows: [{
         row_name: String,
         total_chair: Number,
