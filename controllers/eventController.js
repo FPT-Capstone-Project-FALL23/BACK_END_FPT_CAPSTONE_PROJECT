@@ -1,5 +1,6 @@
 const Organizer = require('../model/organizersModels');
 const Event = require('../model/eventModels');
+const upLoadImg = require("../controllers/eventController");
 const unorm = require('unorm');
 
 /*=============================
@@ -23,27 +24,32 @@ async function checkExistsIdOrganizer(_id) {
     };
 }
 
-
 /*=============================
-## Name function: generateChairNumbers
-## Describe: generate chair numbers for a row
-## Params: row_name, total_chair
+## Name function: generateEventDate
+## Describe: generate row and chair
+## Params: event_date
 ## Result: data
 ===============================*/
-function generateChairNumbers(row_name, total_chair) {
-    const chairObjects = [];
-
-    for (let i = 1; i <= total_chair; i++) {
-        const chair_name = `${row_name}${i}`;
-        const chairObject = {
-            chair_name: chair_name,
-            isBuy: false,
-            isCheckin: false,
-            client_id: null
-        };
-        chairObjects.push(chairObject);
-    }
-    return chairObjects;
+function generateEventDate(event_date) {
+    return event_date.map(date => ({
+        day_number: date.day_number,
+        date: new Date(date.date),
+        event_areas: date.event_areas.map(area => ({
+            name_areas: area.name_areas,
+            total_row: area.total_row,
+            rows: Array.from({ length: area.total_row }, (_, rowIndex) => ({
+                row_name: String.fromCharCode(65 + rowIndex),
+                total_chair: area.total_chair,
+                ticket_price: area.ticket_price,
+                chairs: Array.from({ length: area.total_chair }, (_, chairIndex) => ({
+                    chair_name: `${String.fromCharCode(65 + rowIndex)}${chairIndex + 1}`,
+                    isBuy: false,
+                    isCheckin: false,
+                    client_id: null,
+                })),
+            })),
+        })),
+    }));
 }
 
 /*=============================
@@ -58,6 +64,7 @@ async function createEvent(req, res) {
         const {
             event_name,
             type_of_event,
+            eventImage,
             type_layout,
             event_date,
             event_location,
@@ -75,33 +82,22 @@ async function createEvent(req, res) {
         }
 
         const _idOfOrganizer = (await isExists).organizer._id;
+        let urlImage;
+        if (!eventImage) {
+            urlImage = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+        }
+        else {
+            const dataImgAfterUpload = upLoadImg(eventImage, "event");
+            urlImage = (await dataImgAfterUpload).urlAvatar;
+        }
         //tao event
         const event = await Event.create({
             organizer_id: _idOfOrganizer,
             event_name: event_name,
             type_of_event: type_of_event,
+            eventImage: urlImage,
             type_layout: type_layout,
-            event_date: event_date.map(eventDate => {
-                return {
-                    day_number: eventDate.day_number,
-                    date: eventDate.date,
-                    event_areas: eventDate.event_areas.map(eventArea => {
-                        return {
-                            name_areas: eventArea.name_areas,
-                            total_row: eventArea.total_row,
-                            rows: eventArea.rows.map(row => {
-                                const chairs = generateChairNumbers(row.row_name, row.total_chair);
-                                return {
-                                    row_name: row.row_name,
-                                    total_chair: row.total_chair,
-                                    ticket_price: row.ticket_price,
-                                    chairs: chairs
-                                };
-                            })
-                        };
-                    })
-                };
-            }),
+            event_date: generateEventDate(event_date),
             event_location: event_location,
             event_description: event_description,
             sales_date: sales_date,
@@ -156,7 +152,7 @@ async function getAllEvents(req, res) {
 ## Params: "_idOrganizer"
 ## Result: data
 ===============================*/
-async function getEventsById(req, res) {
+async function getEventsByIdOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
 
@@ -187,6 +183,27 @@ async function getEventsById(req, res) {
             currentPage: page,
             totalPages,
         }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
+/*=============================
+## Name function: getDetailEvent
+## Describe: xem chi tiết sự kiện
+## Params: "_idEvent"
+## Result: data
+===============================*/
+async function getDetailEvent(req, res) {
+    try {
+        const { _idEvent } = req.body;
+        const event = await Event.find({ event_id: _idEvent });
+        if (!event) {
+            return res.status(400).json({ status: false, message: "Không tìm thấy sự kiện." });
+        }
+        res.json({ status: true, event: event });
     }
     catch (error) {
         console.error(error);
@@ -259,27 +276,7 @@ async function updateEvent(req, res) {
         event.event_name = event_name;
         event.type_of_event = type_of_event;
         event.type_layout = type_layout;
-        event.event_date = event_date.map(eventDate => {
-            return {
-                day_number: eventDate.day_number,
-                date: eventDate.date,
-                event_areas: eventDate.event_areas.map(eventArea => {
-                    return {
-                        name_areas: eventArea.name_areas,
-                        total_row: eventArea.total_row,
-                        rows: eventArea.rows.map(row => {
-                            const chairs = generateChairNumbers(row.row_name, row.total_chair);
-                            return {
-                                row_name: row.row_name,
-                                total_chair: row.total_chair,
-                                ticket_price: row.ticket_price,
-                                chairs: chairs
-                            };
-                        })
-                    };
-                })
-            };
-        });
+        event.event_date = generateEventDate(event_date);
         event.event_location = event_location;
         event.event_description = event_description;
         event.sales_date = sales_date;
@@ -419,7 +416,8 @@ async function totalMoney(req, res) {
 module.exports = {
     createEvent,
     getAllEvents,
-    getEventsById,
+    getEventsByIdOrganizer,
+    getDetailEvent,
     getEventByType,
     updateEvent,
     searchEvent,

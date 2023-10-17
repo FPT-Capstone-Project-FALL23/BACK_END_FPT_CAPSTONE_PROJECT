@@ -6,6 +6,69 @@ const Event = require('../model/eventModels');
 const Client = require('../model/clientsModel');
 
 /*=============================
+## Name function: writeIdClientToChair
+## Describe: Ghi idClient vào ghế
+## Params: _idClient, _idChair
+## Result: data: writeToChair
+===============================*/
+async function writeIdClientToChair(_idClient, _idChair) {
+    // Tìm và ghi thông tin của người mua vào ghế ngồi
+    const writeToChair = await Event.findOneAndUpdate(
+        {
+            'event_date.event_areas.rows.chairs._id': _idChair,
+        },
+        {
+            $set: {
+                'event_date.$[].event_areas.$[].rows.$[].chairs.$[chair].client_id': _idClient,
+                'event_date.$[].event_areas.$[].rows.$[].chairs.$[chair].isBuy': true,
+            },
+        },
+        {
+            arrayFilters: [{ 'chair._id': _idChair }],
+            new: true,
+        }
+    );
+    return {
+        writeToChair
+    }
+}
+
+/*=============================
+## Name function: foundChairAndArea
+## Describe: Xác định ngày, khu vực ghế ngồi trong sự kiện
+## Params: event, _idArea, _idChair
+## Result: data: foundDayNumber, foundEventArea, foundChair
+===============================*/
+async function foundChairAndArea(event, _idArea, _idChair) {
+    let foundEventArea = null;
+    let foundChair = null;
+    let foundDayNumber = null;
+    let founDayEvent = null;
+
+    event.event_date.forEach((date) => {
+        //Xác định thứ tự ngày diễn ra sự kiện
+        foundDayNumber = date.day_number;
+        //xác định ngày diễn ra sự kiện
+        founDayEvent = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
+        //Xác định khu vực sự kiện
+        const area = date.event_areas.find((a) => a._id.toString() === _idArea);
+        if (area) {
+            foundEventArea = area;
+        }
+        //Xác định vị trí ghế
+        date.event_areas.forEach((area) => {
+            area.rows.forEach((row) => {
+                const chair = row.chairs.find((c) => c._id.toString() == _idChair);
+                if (chair) {
+                    foundChair = chair;
+                }
+            });
+        });
+    });
+    return { foundDayNumber, founDayEvent, foundEventArea, foundChair }
+}
+
+/*=============================
 ## Name function: createEventTicketPDF
 ## Describe: Tạo tệp PDF chứa vé sự kiện và mã QR code
 ## Params: _idClient, _idEvent, _idChair
@@ -14,7 +77,7 @@ const Client = require('../model/clientsModel');
 async function createEventTicket(req, res) {
     try {
         const { _idClient } = req.body;
-        const { _idEvent, _idChair } = req.body.event;
+        const { _idEvent, _idArea, _idChair } = req.body.event;
         const { email } = req.body;
 
         //Kiểm tra _id có tồn tại trong user
@@ -35,30 +98,40 @@ async function createEventTicket(req, res) {
             });
         }
 
-        const chair = await Event.findOne({ "event_date.event_areas.rows.chairs._id": _idChair });
+        // Kiểm tra sự tồn tại của ghế
+        const chair = await Event.findOne({
+            _id: _idEvent,
+            "event_date.event_areas.rows.chairs._id": _idChair
+        });
         if (!chair) {
             return res.status(400).json({
                 status: false,
                 message: 'Ghế không tồn tại',
             });
         }
-
+        //Tìm khu vực và ghế sự kiện
+        const foundChairAndAreaForEvent = foundChairAndArea(event, _idArea, _idChair);
+        //Ghi thông tin người mua vào ghế
+        const dataChair = writeIdClientToChair(_idClient, _idChair);
+        finalDataChair = (await dataChair).writeToChair;
         // Tạo tệp PDF
         const doc = new PDFDocument();
         // Thêm thông tin sự kiện
         doc.fontSize(16).text('TICKETS TO THE EVENT', { underline: true });
         doc.fontSize(12).text(`Event name: ${event.event_name}`);
         doc.fontSize(12).text(`Event type: ${event.type_of_event}`);
+        doc.fontSize(12).text(`Event Date: ${(await foundChairAndAreaForEvent).founDayEvent}`);
         // Thêm thông tin ghế
         doc.moveDown();
         doc.fontSize(16).text('Seat information:', { underline: true });
-        doc.fontSize(12).text(`Ticket area: ${event.event_date[0].event_areas[0].name_areas}`);
-        doc.fontSize(12).text(`Chair name: ${event.event_date[0].event_areas[0].rows[0].chairs[0].chair_name}`);
+        doc.fontSize(12).text(`Ticket area: ${(await foundChairAndAreaForEvent).foundEventArea.name_areas}`);
+        doc.fontSize(12).text(`Chair name: ${(await foundChairAndAreaForEvent).foundChair.chair_name}`);
 
         // Tạo mã QR với các ID tương ứng
         const qrData = {
             userId: _idClient,
             eventId: _idEvent,
+            dayEvent: (await foundChairAndAreaForEvent).foundDayNumber,
             chairId: _idChair
         };
         const qrOptions = {
@@ -73,10 +146,7 @@ async function createEventTicket(req, res) {
         doc.moveDown();
         doc.fontSize(16).text('Mã QR:', { underline: true });
         doc.image(qrImageData, { width: 200 });
-
-        // Thêm thông tin sự kiện và ghế vào tệp PDF...
-
-        // Ghi tệp PDF vào file 'ticket.pdf'
+        // Ghi tệp PDF vào file 'TikSeat.pdf'
         doc.pipe(fs.createWriteStream('TikSeat.pdf')).on('finish', () => {
             // Đọc nội dung của tệp PDF
             const fileData = fs.readFileSync('TikSeat.pdf');
@@ -108,7 +178,7 @@ async function createEventTicket(req, res) {
             // Gửi email
             sendMailToUser(mailOptions)
                 .then(() => {
-                    res.json({ status: true, message: 'Gửi thành công' });
+                    res.json({ status: true, message: 'Gửi Ticket thành công' });
                 })
                 .catch((error) => {
                     res.json({ status: false, message: 'Lỗi khi gửi Ticket' });

@@ -537,5 +537,6 @@ module.exports = {
     createClient,
     createOrganizer,
     updateClient,
-    updateOrganizer
+    updateOrganizer,
+    upLoadImg
 };
