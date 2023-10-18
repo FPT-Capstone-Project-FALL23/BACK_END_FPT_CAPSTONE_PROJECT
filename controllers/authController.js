@@ -151,7 +151,14 @@ async function registerUser(req, res) {
             password: hashedPassword,
             role: role,
         });
-
+        //Nhà tổ chức thì không cần token, đợi admin accept
+        if (role == "organizer") {
+            return res.status(200).json({
+                status: true,
+                data: user,
+                message: `Người dùng với ${role} đã kí thành công`,
+            });
+        }
         //tạo token
         const token = generateToken(user);
         res.status(200).json({
@@ -305,9 +312,9 @@ async function upLoadImg(image, name_file) {
         ublic_id: `${Date.now()}`,
         upload_preset: `${name_file}`
     })
-    const urlAvatar = uploadRes.url;
+    const urlImage = uploadRes.url;
     return {
-        urlAvatar
+        urlImage
     }
 }
 /*=============================
@@ -343,12 +350,12 @@ async function createClient(req, res) {
         }
         let urlImageAvatar;
         if (!avatarImage) {
-            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+            urlImageAvatar = process.env.IMG_AVATAR;
         }
         else {
             const dataImgBeforUpload = upLoadImg(avatarImage, "clientOnline");
-            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlAvatar);
-            urlImageAvatar = (await dataImgBeforUpload).urlAvatar;
+            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlImage);
+            urlImageAvatar = (await dataImgBeforUpload).urlImage;
         }
         const client = await Client.create({
             user_id: _idOfUser,
@@ -447,12 +454,12 @@ async function createOrganizer(req, res) {
         }
         let urlImageAvatar;
         if (!avatarImage) {
-            urlImageAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+            urlImageAvatar = process.env.IMG_AVATAR;
         }
         else {
             const dataImgBeforUpload = upLoadImg(avatarImage, "organizerOnline");
-            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlAvatar);
-            urlImageAvatar = (await dataImgBeforUpload).urlAvatar;
+            console.log("dataImgAfterUpload", (await dataImgBeforUpload).urlImage);
+            urlImageAvatar = (await dataImgBeforUpload).urlImage;
         }
         //Tạo Organizer 
         const organizer = await Organizer.create({
