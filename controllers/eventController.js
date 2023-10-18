@@ -37,12 +37,12 @@ function generateEventDate(event_date) {
         event_areas: date.event_areas.map(area => ({
             name_areas: area.name_areas,
             total_row: area.total_row,
-            rows: Array.from({ length: area.total_row }, (_, rowIndex) => ({
-                row_name: String.fromCharCode(65 + rowIndex),
-                total_chair: area.total_chair,
+            rows: area.rows.map(row => ({
+                row_name: row.row_name,
+                total_chair: row.total_chair,
                 ticket_price: area.ticket_price,
-                chairs: Array.from({ length: area.total_chair }, (_, chairIndex) => ({
-                    chair_name: `${String.fromCharCode(65 + rowIndex)}${chairIndex + 1}`,
+                chairs: Array.from({ length: row.total_chair }, (_, chairIndex) => ({
+                    chair_name: `${row.row_name}${chairIndex + 1}`,
                     isBuy: false,
                     isCheckin: false,
                     client_id: null,
@@ -69,7 +69,8 @@ async function createEvent(req, res) {
             event_date,
             event_location,
             event_description,
-            sales_date
+            sales_date,
+            isActive
         } = req.body.eventInfo;
 
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
@@ -80,27 +81,38 @@ async function createEvent(req, res) {
                 message: isExists.message,
             });
         }
-
         const _idOfOrganizer = (await isExists).organizer._id;
-        let urlImage;
+        
+        //up ảnh bìa sự kiện
+        let urlImageEvent;
         if (!eventImage) {
-            urlImage = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+            urlImageEvent = process.env.IMG_EVENT;
         }
         else {
-            const dataImgAfterUpload = upLoadImg(eventImage, "event");
-            urlImage = (await dataImgAfterUpload).urlAvatar;
+            const dataImgAfterUpload = upLoadImg(eventImage, "ImgEvent");
+            urlImageEvent = (await dataImgAfterUpload).urlImage;
+        }
+        //up ảnh khán đài
+        let urlImageStand;
+        if (!type_layout) {
+            urlImageStand = process.env.IMG_STANDS;
+        }
+        else {
+            const dataImgAfterUpload = upLoadImg(type_layout, "ImgStand");
+            urlImageStand = (await dataImgAfterUpload).urlImage;
         }
         //tao event
         const event = await Event.create({
             organizer_id: _idOfOrganizer,
             event_name: event_name,
             type_of_event: type_of_event,
-            eventImage: urlImage,
-            type_layout: type_layout,
+            eventImage: urlImageEvent,
+            type_layout: urlImageStand,
             event_date: generateEventDate(event_date),
             event_location: event_location,
             event_description: event_description,
             sales_date: sales_date,
+            isActive: isActive,
         });
 
         res.status(200).json({

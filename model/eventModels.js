@@ -7,7 +7,7 @@ const chairSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
         validate: {
-            validator: function(value) {
+            validator: function (value) {
                 if (!value) {
                     return this.isCheckin === false;
                 }
@@ -45,13 +45,11 @@ const eventSchema = new mongoose.Schema({
         ref: 'Organizer',
         require: true,
     },
-    event_name: { type: String},
-    type_of_event: { type: String},
+    event_name: { type: String },
+    type_of_event: { type: String },
     eventImage: { type: String },
-    type_layout: {
-        type: String
-    },
-    event_date: [{ 
+    type_layout: { type: String },
+    event_date: [{
         day_number: Number,
         date: Date,
         event_areas: [areasSchema],
@@ -62,10 +60,14 @@ const eventSchema = new mongoose.Schema({
         ward: { type: String },
         specific_address: { type: String },
     },
-    event_description: { type: String},
+    event_description: { type: String },
     sales_date: {
-        start_sales_date: { type: Date},
-        end_sales_date: { type: Date},
+        start_sales_date: { type: Date },
+        end_sales_date: { type: Date },
+    },
+    isActive: {
+        type: Boolean,
+        default: false,
     },
 });
 
