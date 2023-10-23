@@ -62,6 +62,38 @@ async function loginUser(req, res) {
 }
 
 /*=============================
+## Name function: getProfile
+## Describe: Lấy profile người dùng
+## Params: userId, role
+## Result: status,message,dataProfile
+===============================*/
+async function getProfile(req, res) {
+    try {
+        const { userId, role } = req.body;
+        let data = null; // Khởi tạo dữ liệu dưới dạng null (giá trị trả về mặc định)
+        if (role == "client") {
+            const client = await Client.findOne({ user_id: userId })
+            if (client) {
+                data = client; // Set data to the client nếu tìm thấy
+            }
+        }
+        else if (role == "organizer") {
+            const organizer = await Organizer.findOne({ user_id: userId })
+            if (organizer) {
+                data = organizer; // Set data to the organizer nếu tìm thấy
+            }
+        }
+        return res.status(200).json({
+            status: true,
+            data: data,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
+/*=============================
 ## Name function: verifyUserCredentials
 ## Describe: Xác minh thông tin đăng nhập của người dùng
 ## Params: email, password
@@ -545,5 +577,6 @@ module.exports = {
     createOrganizer,
     updateClient,
     updateOrganizer,
-    upLoadImg
+    upLoadImg,
+    getProfile
 };

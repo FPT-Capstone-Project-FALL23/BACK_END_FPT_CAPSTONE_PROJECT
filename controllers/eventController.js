@@ -82,7 +82,7 @@ async function createEvent(req, res) {
             });
         }
         const _idOfOrganizer = (await isExists).organizer._id;
-        
+
         //up ảnh bìa sự kiện
         let urlImageEvent;
         if (!eventImage) {
@@ -211,7 +211,7 @@ async function getEventsByIdOrganizer(req, res) {
 async function getDetailEvent(req, res) {
     try {
         const { _idEvent } = req.body;
-        const event = await Event.find({ event_id: _idEvent });
+        const event = await Event.findById(_idEvent);
         if (!event) {
             return res.status(400).json({ status: false, message: "Không tìm thấy sự kiện." });
         }
