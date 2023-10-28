@@ -386,11 +386,11 @@ async function createClient(req, res) {
 ===============================*/
 async function updateClient(req, res) {
     try {
-        const { _idUser, avatarImage } = req.body;
-        const { full_name, phone, birthday, gender } = req.body.clientInfo;
+        const { _idClient, avatarImage } = req.body;
+        const { full_name, phone, birthday, gender, favorit_enres } = req.body.clientInfo;
 
         // Kiểm tra sự tồn tại của client
-        const client = await Client.findById(_idUser);
+        const client = await Client.findById(_idClient);
         if (!client) {
             return res.status(400).json({
                 status: false,
@@ -398,12 +398,21 @@ async function updateClient(req, res) {
             });
         }
 
+        let urlImageAvatar;
+        if (!avatarImage) {
+            urlImageAvatar = client.avatarImage;
+        }
+        else {
+            const dataImgBeforUpload = upLoadImg(avatarImage, "clientOnline");
+            urlImageAvatar = (await dataImgBeforUpload).urlImage;
+        }
         // Cập nhật thông tin client
+        client.avatarImage = urlImageAvatar;
         client.full_name = full_name;
         client.phone = phone;
         client.birthday = birthday;
         client.gender = gender;
-        client.avatarImage = avatarImage;
+        client.favorit_enres = favorit_enres;
 
         // Lưu client đã cập nhật
         const updatedClient = await client.save();
@@ -416,8 +425,7 @@ async function updateClient(req, res) {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'server error, try after some time' });
-        console.log('Error while uploading profile image', error.message);
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
