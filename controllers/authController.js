@@ -503,7 +503,7 @@ async function createOrganizer(req, res) {
 ===============================*/
 async function updateOrganizer(req, res) {
     try {
-        const { _idUser, avatarImage } = req.body;
+        const { _idOrganizer, avatarImage } = req.body;
         const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
 
