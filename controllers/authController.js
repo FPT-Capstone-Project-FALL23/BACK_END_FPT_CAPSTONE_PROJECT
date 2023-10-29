@@ -508,7 +508,7 @@ async function updateOrganizer(req, res) {
 
 
         // Kiểm tra sự tồn tại của organizer
-        const organizer = await organizer.findById(_idUser);
+        const organizer = await Organizer.findById(_idOrganizer);
         if (!organizer) {
             return res.status(400).json({
                 status: false,
