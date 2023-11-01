@@ -8,6 +8,10 @@ const eventRouter = require('./routes/eventRoutes');
 const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
 
+const notificationNewEvent = require('./controllers/notificationNewEvent');
+
+
+
 const app = express();
 
 app.use(cors());
