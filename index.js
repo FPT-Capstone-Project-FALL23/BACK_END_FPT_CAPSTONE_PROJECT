@@ -7,9 +7,11 @@ const sendEmail = require('./routes/sendMailRoutes');
 const eventRouter = require('./routes/eventRoutes');
 const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
+const orderRouter = require('./routes/orderRoutes');
 
 const app = express();
 
+app.use(bodyParser.json());
 app.use(cors());
 
 app.use(express.static('public'));
@@ -24,6 +26,8 @@ app.use("/api/sendMail", sendEmail);
 app.use("/api/event", eventRouter);
 //route api ticket
 app.use("/api/ticket", ticketRouter);
+//route api order
+app.use("/api/order", orderRouter);
 
 app.use(express.json({ limit: '10mb' }));
 

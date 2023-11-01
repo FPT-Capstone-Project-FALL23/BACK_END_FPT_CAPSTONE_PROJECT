@@ -66,11 +66,13 @@ async function createEvent(req, res) {
             type_of_event,
             eventImage,
             type_layout,
+            maxTicketInOrder,
             event_date,
             event_location,
             event_description,
             sales_date,
-            isActive
+            isActive,
+            isHot
         } = req.body.eventInfo;
 
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
@@ -108,11 +110,13 @@ async function createEvent(req, res) {
             type_of_event: type_of_event,
             eventImage: urlImageEvent,
             type_layout: urlImageStand,
+            maxTicketInOrder: maxTicketInOrder,
             event_date: generateEventDate(event_date),
             event_location: event_location,
             event_description: event_description,
             sales_date: sales_date,
             isActive: isActive,
+            isHot: isHot
         });
 
         res.status(200).json({
@@ -138,10 +142,11 @@ async function getAllEvents(req, res) {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
-        const totalEvents = await Event.countDocuments(); // Tổng số sự kiện trong bảng
+        const totalEvents = await Event.countDocuments({ isActive: true }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
 
-        const events = await Event.find()
+        const events = await Event.find({ isActive: true })
+            .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
@@ -262,11 +267,15 @@ async function updateEvent(req, res) {
         const {
             event_name,
             type_of_event,
+            eventImage,
             type_layout,
+            maxTicketInOrder,
             event_date,
             event_location,
             event_description,
-            sales_date
+            sales_date,
+            isActive,
+            isHot
         } = req.body.eventInfo;
 
         // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
@@ -284,15 +293,36 @@ async function updateEvent(req, res) {
             });
         }
 
+        //up ảnh bìa sự kiện
+        let urlImageEvent;
+        if (!eventImage) {
+            urlImageEvent = event.IMG_EVENT;
+        }
+        else {
+            const dataImgAfterUpload = upLoadImg(eventImage, "ImgEvent");
+            urlImageEvent = (await dataImgAfterUpload).urlImage;
+        }
+        //up ảnh khán đài
+        let urlImageStand;
+        if (!type_layout) {
+            urlImageStand = event.type_layout;
+        }
+        else {
+            const dataImgAfterUpload = upLoadImg(type_layout, "ImgStand");
+            urlImageStand = (await dataImgAfterUpload).urlImage;
+        }
         // Cập nhật thông tin sự kiện
         event.event_name = event_name;
         event.type_of_event = type_of_event;
-        event.type_layout = type_layout;
+        event.eventImage = urlImageEvent;
+        event.type_layout = urlImageStand;
+        event.maxTicketInOrder = maxTicketInOrder;
         event.event_date = generateEventDate(event_date);
         event.event_location = event_location;
         event.event_description = event_description;
         event.sales_date = sales_date;
-
+        event.isActive = isActive;
+        event.isHot = isHot;
         // Lưu sự kiện đã cập nhật
         const updatedEvent = await event.save();
 
@@ -322,7 +352,7 @@ async function searchEvent(req, res) {
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
 
         // Xây dựng các điều kiện tìm kiếm
-        const searchConditions = {};
+        const searchConditions = { isActive: true };
 
         if (event_name) {
             const keywords = event_name.split(" "); // Tách từ khóa từ tên sự kiện
@@ -336,13 +366,18 @@ async function searchEvent(req, res) {
             searchConditions.type_of_event = type_of_event;
         }
 
-        if (event_location) {
+        /* if (event_location) {
             const keywords = event_location.split(" ");
             const regexKeywords = keywords.map((keyword) => {
                 const keywordNormalized = unorm.nfkd(keyword).replace(/[\u0300-\u036f]/g, ""); // Chuẩn hóa và loại bỏ dấu tiếng Việt từ từ khóa
                 return new RegExp(keywordNormalized, "i");
             });
-            searchConditions.event_location = { $in: regexKeywords };
+            searchConditions[event_location.city] = { $in: regexKeywords };
+        } */
+        if (event_location && event_location.city) {
+            const cityKeyword = event_location.city;
+            const cityRegex = new RegExp(cityKeyword, "i");
+            searchConditions['event_location.city'] = cityRegex;
         }
 
         if (event_date) {

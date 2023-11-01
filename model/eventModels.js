@@ -69,6 +69,10 @@ const eventSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    isHot: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 // Create the event model
