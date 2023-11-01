@@ -506,7 +506,6 @@ async function updateOrganizer(req, res) {
         const { _idOrganizer, avatarImage } = req.body;
         const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
 
-
         // Kiểm tra sự tồn tại của organizer
         const organizer = await Organizer.findById(_idOrganizer);
         if (!organizer) {
@@ -516,16 +515,24 @@ async function updateOrganizer(req, res) {
             });
         }
 
+        let urlImageAvatar;
+        if (!avatarImage) {
+            urlImageAvatar = organizer.avatarImage;
+        }
+        else {
+            const dataImgBeforUpload = upLoadImg(avatarImage, "organizerOnline");
+            urlImageAvatar = (await dataImgBeforUpload).urlImage;
+        }
         // Cập nhật thông tin organizer
-        organizer.organizer_name = organizer_name,
-            organizer.avatarImage = avatarImage,
-            organizer.organizer_type = organizer_type,
-            organizer.phone = phone,
-            organizer.website = website,
-            organizer.founded_date = founded_date,
-            organizer.isActive = isActive,
-            organizer.description = description,
-            organizer.address = address
+        organizer.avatarImage = urlImageAvatar;
+        organizer.organizer_name = organizer_name;
+        organizer.organizer_type = organizer_type;
+        organizer.phone = phone;
+        organizer.website = website;
+        organizer.founded_date = founded_date;
+        organizer.isActive = isActive;
+        organizer.description = description;
+        organizer.address = address;
 
         // Lưu organizer đã cập nhật
         const updateOrganizer = await organizer.save();
@@ -538,8 +545,7 @@ async function updateOrganizer(req, res) {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'server error, try after some time' });
-        console.log('Error while uploading profile image', error.message);
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
