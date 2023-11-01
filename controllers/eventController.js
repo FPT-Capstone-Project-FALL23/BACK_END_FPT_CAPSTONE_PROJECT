@@ -31,13 +31,13 @@ async function checkExistsIdOrganizer(_id) {
 ## Result: data
 ===============================*/
 function generateEventDate(event_date) {
-    return event_date.map(date => ({
+    return event_date?.map(date => ({
         day_number: date.day_number,
-        date: new Date(date.date),
-        event_areas: date.event_areas.map(area => ({
+        date: date.date,
+        event_areas: date.event_areas?.map(area => ({
             name_areas: area.name_areas,
             total_row: area.total_row,
-            rows: area.rows.map(row => ({
+            rows: area.rows?.map(row => ({
                 row_name: row.row_name,
                 total_chair: row.total_chair,
                 ticket_price: area.ticket_price,
@@ -356,7 +356,7 @@ async function searchEvent(req, res) {
 
         if (event_name) {
             const keywords = event_name.split(" "); // Tách từ khóa từ tên sự kiện
-            const regexKeywords = keywords.map((keyword) => {
+            const regexKeywords = keywords?.map((keyword) => {
                 return new RegExp(keyword, "i"); // Tạo biểu thức chính quy cho mỗi từ khóa
             });
             searchConditions.event_name = { $all: regexKeywords }; // Tìm kiếm các từ khóa trong tên sự kiện
@@ -368,7 +368,7 @@ async function searchEvent(req, res) {
 
         /* if (event_location) {
             const keywords = event_location.split(" ");
-            const regexKeywords = keywords.map((keyword) => {
+            const regexKeywords = keywords?.map((keyword) => {
                 const keywordNormalized = unorm.nfkd(keyword).replace(/[\u0300-\u036f]/g, ""); // Chuẩn hóa và loại bỏ dấu tiếng Việt từ từ khóa
                 return new RegExp(keywordNormalized, "i");
             });
