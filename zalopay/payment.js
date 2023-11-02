@@ -46,13 +46,13 @@ function callBack(dataStr, reqMac) {
 }
 
 function checkZaloPayment(app_trans_id) {
-    const postData = {
+    let postData = {
         app_id: config.appid,
         app_trans_id: app_trans_id,
     }
-    const data = postData.app_id + "|" + postData.app_trans_id + "|" + config.key1; // appid|app_trans_id|key1
+    let data = postData.app_id + "|" + postData.app_trans_id + "|" + config.key1; // appid|app_trans_id|key1
     postData.mac = CryptoJS.HmacSHA256(data, config.key1).toString();
-    const postConfig = {
+    let postConfig = {
         method: 'post',
         url: "https://sb-openapi.zalopay.vn/v2/query",
         headers: {
@@ -67,7 +67,7 @@ function returnZaloMoney(amount, description, zp_trans_id) {
     const refund_url = "https://sb-openapi.zalopay.vn/v2/refund";
     const timestamp = Date.now();
     const uid = `${timestamp}${Math.floor(111 + Math.random() * 999)}`;
-    const params = {
+    let params = {
         app_id: config.appid,
         m_refund_id: `${moment().format('YYMMDD')}_${config.appid}_${uid}`,
         timestamp,
@@ -76,9 +76,22 @@ function returnZaloMoney(amount, description, zp_trans_id) {
         description: description,
     };
 
-    const data = params.app_id + "|" + params.zp_trans_id + "|" + params.amount + "|" + params.description + "|" + params.timestamp;
+    let data = params.app_id + "|" + params.zp_trans_id + "|" + params.amount + "|" + params.description + "|" + params.timestamp;
     params.mac = CryptoJS.HmacSHA256(data, config.key1).toString();
-    return axios.post(refund_url, null, { params: params })
+    console.log(params.m_refund_id);
+    return axios.post(refund_url, null, { params: params });
+}
+
+function checkZaloReturn(m_refund_id) {
+    const endpoint = "https://sb-openapi.zalopay.vn/v2/query_refund";
+    const params = {
+        app_id: config.appid,
+        timestamp: Date.now(), // miliseconds
+        m_refund_id: m_refund_id,
+    };
+    const data = config.appid + "|" + params.m_refund_id + "|" + params.timestamp; // app_id|m_refund_id|timestamp
+    params.mac = CryptoJS.HmacSHA256(data, config.key1).toString()
+    return axios.post(endpoint, null, { params })
 }
 
 
@@ -86,5 +99,6 @@ module.exports = {
     createZaloPayOrder,
     callBack,
     checkZaloPayment,
-    returnZaloMoney
+    returnZaloMoney,
+    checkZaloReturn
 };

@@ -176,7 +176,7 @@ async function getEventsByIdOrganizer(req, res) {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
-        const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
+        const totalEvents = await Event.countDocuments({ isActive: true, organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
 
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
@@ -190,7 +190,7 @@ async function getEventsByIdOrganizer(req, res) {
 
         const _idOfOrganizer = (await isExists).organizer._id;
 
-        const events = await Event.find({ organizer_id: _idOfOrganizer })
+        const events = await Event.find({ isActive: true, organizer_id: _idOfOrganizer })
             .skip(skip)
             .limit(limit);
 
@@ -366,14 +366,6 @@ async function searchEvent(req, res) {
             searchConditions.type_of_event = type_of_event;
         }
 
-        /* if (event_location) {
-            const keywords = event_location.split(" ");
-            const regexKeywords = keywords.map((keyword) => {
-                const keywordNormalized = unorm.nfkd(keyword).replace(/[\u0300-\u036f]/g, ""); // Chuẩn hóa và loại bỏ dấu tiếng Việt từ từ khóa
-                return new RegExp(keywordNormalized, "i");
-            });
-            searchConditions[event_location.city] = { $in: regexKeywords };
-        } */
         if (event_location && event_location.city) {
             const cityKeyword = event_location.city;
             const cityRegex = new RegExp(cityKeyword, "i");
@@ -411,50 +403,83 @@ async function searchEvent(req, res) {
     }
 }
 
-async function totalMoney(req, res) {
-    try {
-        const { _idEvent } = req.body;
 
-        // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
-        const events = await Event.findById(_idEvent);
-        if (!events) {
-            return res.status(400).json({
-                status: false,
-                message: 'Sự kiện không tồn tại',
-            });
-        }
+//
+function getEventStatus(event) {
+    const currentDate = new Date();
+    const firstSaleDate = event.sales_date.start_sales_date;
+    const firstEventDate = event.event_date[0].date;
+    const lastEventDate = event.event_date[0].date;
 
-        const event = await Event.findById(_idEvent).populate('event_date.event_areas.rows');
-
-        let totalSeatsByArea = {};
-        let totalAmount = 0;
-
-        // Lặp qua các khu vực
-        for (const area of event.event_date[0].event_areas) {
-            const areaName = area.name_areas;
-            let seatsInArea = 0;
-
-            // Lặp qua các hàng trong khu vực
-            for (const row of area.rows) {
-                seatsInArea += row.total_chair;
-            }
-
-            totalSeatsByArea[areaName] = seatsInArea;
-        }
-
-        // Tính tổng tiền
-        for (const area of event.event_date[0].event_areas) {
-            for (const row of area.rows) {
-                totalAmount += row.total_chair * row.ticket_price;
-            }
-        }
-
-        res.json({
-            totalSeatsByArea,
-            message: `Tổng tiền dự kiến ${totalAmount}`,
-        }); // Trả về tổng số ghế theo khu vực và tổng tiền dưới dạng JSON
+    if (currentDate < firstSaleDate) {
+        return 'UPCOMING';
+    } else if (currentDate >= firstEventDate && currentDate <= lastEventDate) {
+        return 'HAPPENNING';
+    } else {
+        return 'FINISHED';
     }
-    catch (error) {
+}
+// Hàm để tính tổng tiền thực tế từ một sự kiện
+function calculateTotalRevenue(event) {
+    let totalRevenue = 0;
+
+    // Lặp qua tất cả khu vực (areas)
+    event.event_date[0].event_areas.forEach((area) => {
+        // Lặp qua tất cả dãy ghế (rows) trong khu vực
+        area.rows.forEach((row) => {
+            // Lặp qua tất cả các ghế (chairs) trong dãy ghế
+            row.chairs.forEach((chair) => {
+                if (chair.isBuy) {
+                    totalRevenue += row.ticket_price;
+                }
+            });
+        });
+    });
+
+    return totalRevenue;
+}
+
+async function listEventOrganizer(req, res) {
+    try {
+        const { _idOrganizer } = req.body;
+        const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
+        const limit = 12; // Số lượng sự kiện hiển thị trên mỗi trang
+        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
+        const events = await Event.find({ organizer_id: _idOrganizer })
+            .skip(skip)
+            .limit(limit);
+
+        // Tạo một mảng kết quả để lưu thông tin sự kiện với trạng thái
+        const eventList = [];
+
+        // Lặp qua danh sách sự kiện và trích xuất thông tin bạn muốn
+        events.forEach((event) => {
+            const eventStatus = getEventStatus(event);
+            const totalRevenue = calculateTotalRevenue(event);
+            // Tính toán số tiền dự kiến
+            let totalMoney = 0;
+            event.event_date[0].event_areas.forEach((area) => {
+                area.rows.forEach((row) => {
+                    totalMoney += row.total_chair * row.ticket_price;
+                });
+            });
+            // Thêm thông tin sự kiện và trạng thái vào danh sách kết quả
+            eventList.push({
+                eventName: event.event_name,
+                startDay: event.event_date[0].date,
+                totalEstimated: totalMoney,
+                totalActual: totalRevenue,
+                eventStatus: eventStatus,
+                isActive: event.isActive,
+            });
+        });
+
+        res.status(200).json({
+            status: true,
+            data: eventList,
+            currentPage: page,
+        });
+    } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
     }
@@ -468,5 +493,5 @@ module.exports = {
     getEventByType,
     updateEvent,
     searchEvent,
-    totalMoney
+    listEventOrganizer
 };
