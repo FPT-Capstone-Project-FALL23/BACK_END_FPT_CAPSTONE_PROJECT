@@ -191,6 +191,7 @@ async function getEventsByIdOrganizer(req, res) {
         const _idOfOrganizer = (await isExists).organizer._id;
 
         const events = await Event.find({ isActive: true, organizer_id: _idOfOrganizer })
+            .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
@@ -238,6 +239,7 @@ async function getEventByType(req, res) {
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
 
         const events = await Event.find({ type_of_event: type_of_event })
+            .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
@@ -383,6 +385,7 @@ async function searchEvent(req, res) {
 
         // Tìm kiếm sự kiện dựa trên các điều kiện
         const events = await Event.find(searchConditions)
+            .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
@@ -408,12 +411,12 @@ async function searchEvent(req, res) {
 function getEventStatus(event) {
     const currentDate = new Date();
     const firstSaleDate = event.sales_date.start_sales_date;
-    const firstEventDate = event.event_date[0].date;
     const lastEventDate = event.event_date[0].date;
+    const isActive = event.isActive;
 
-    if (currentDate < firstSaleDate) {
+    if (currentDate < firstSaleDate || !isActive ) {
         return 'UPCOMING';
-    } else if (currentDate >= firstEventDate && currentDate <= lastEventDate) {
+    } else if (currentDate >= firstSaleDate && currentDate <= lastEventDate) {
         return 'HAPPENNING';
     } else {
         return 'FINISHED';
@@ -443,9 +446,13 @@ async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 12; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
+        const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
+        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
+
         const events = await Event.find({ organizer_id: _idOrganizer })
+            .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
@@ -478,6 +485,7 @@ async function listEventOrganizer(req, res) {
             status: true,
             data: eventList,
             currentPage: page,
+            totalPages: totalPages
         });
     } catch (error) {
         console.error(error);
