@@ -49,6 +49,7 @@ const eventSchema = new mongoose.Schema({
     type_of_event: { type: String },
     eventImage: { type: String },
     type_layout: { type: String },
+    maxTicketInOrder: {type: Number},
     event_date: [{
         day_number: Number,
         date: Date,
