@@ -221,7 +221,8 @@ async function getDetailEvent(req, res) {
         if (!event) {
             return res.status(400).json({ status: false, message: "Không tìm thấy sự kiện." });
         }
-        res.json({ status: true, event: event });
+        const organizer = await Organizer.findById(event.organizer_id);
+        res.json({ status: true, event: event, organizer: organizer.organizer_name });
     }
     catch (error) {
         console.error(error);
