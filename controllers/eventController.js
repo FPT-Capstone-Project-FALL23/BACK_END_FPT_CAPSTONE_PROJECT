@@ -413,7 +413,7 @@ function getEventStatus(event) {
 
     if (currentDate < firstSaleDate) {
         return 'UPCOMING';
-    } else if (currentDate >= firstEventDate && currentDate <= lastEventDate) {
+    } else if (currentDate >= firstSaleDate && currentDate <= lastEventDate) {
         return 'HAPPENNING';
     } else {
         return 'FINISHED';
@@ -445,6 +445,8 @@ async function listEventOrganizer(req, res) {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 12; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
+        const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
+        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
         const events = await Event.find({ organizer_id: _idOrganizer })
             .skip(skip)
             .limit(limit);
@@ -478,6 +480,7 @@ async function listEventOrganizer(req, res) {
             status: true,
             data: eventList,
             currentPage: page,
+            totalPages: totalPages,
         });
     } catch (error) {
         console.error(error);
