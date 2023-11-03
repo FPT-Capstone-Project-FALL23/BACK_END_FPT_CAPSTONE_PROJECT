@@ -9,6 +9,8 @@ const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
 const orderRouter = require('./routes/orderRoutes');
 
+const notificationNewEvent = require('./controllers/notificationNewEvent');
+
 const app = express();
 
 app.use(bodyParser.json());

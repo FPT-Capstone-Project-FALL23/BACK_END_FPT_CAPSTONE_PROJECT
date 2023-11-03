@@ -485,7 +485,7 @@ async function listEventOrganizer(req, res) {
             status: true,
             data: eventList,
             currentPage: page,
-            totalPages: totalPages
+            totalPages: totalPages,
         });
     } catch (error) {
         console.error(error);
