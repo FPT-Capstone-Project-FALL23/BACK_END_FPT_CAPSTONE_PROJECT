@@ -6,7 +6,7 @@ const qs = require('qs');
 
 function createZaloPayOrder(describe, amount) {
     const embed_data = {
-        redirectUrl: "http://localhost:3000/confirm-payment"
+        redirectUrl: "http://localhost:3000/"
     };
 
     const items = [{}];
@@ -15,7 +15,7 @@ function createZaloPayOrder(describe, amount) {
     const order = {
         app_id: config.appid,
         app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
-        app_user: "0935653650",
+        app_user: "ZaloPayDemo",
         app_time: Date.now(),
         item: JSON.stringify(items),
         embed_data: JSON.stringify(embed_data),
@@ -29,7 +29,7 @@ function createZaloPayOrder(describe, amount) {
     order.mac = CryptoJS.HmacSHA256(data, config.key1).toString();
     console.log(data);
     console.log(order.mac);
-    return axios.post(endpoint, null, { params: order });
+    return axios.post(endpoint, null, { params: order })
 }
 
 function callBack(dataStr, reqMac) {

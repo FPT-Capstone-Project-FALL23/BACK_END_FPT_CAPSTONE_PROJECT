@@ -1,6 +1,6 @@
-const { createEventTicket } = require("../controllers/ticketController");
+const { createTicket } = require("../controllers/ticketController");
  const ticketRouter = require("express").Router();
 
- ticketRouter.post("/createEventTicket", createEventTicket)
+ ticketRouter.post("/createTicket", createTicket)
 
  module.exports = ticketRouter
