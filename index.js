@@ -9,12 +9,16 @@ const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
 const orderRouter = require('./routes/orderRoutes');
 
+
 const notificationNewEvent = require('./controllers/notificationNewEvent');
+//const realtimeBuy = require('./controllers/realtimeBuy');
+
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(cors());
+
 
 app.use(express.static('public'));
 app.use(express.json({ limit: '50mb' }));
@@ -47,4 +51,5 @@ mongoose.connect(process.env.MONGO_URL, {
 app.listen(process.env.PORT, () => {
     console.log(`Server started on port ${process.env.PORT}`)
     console.log(`Link server http://localhost:${process.env.PORT}/`)
+    
 })
