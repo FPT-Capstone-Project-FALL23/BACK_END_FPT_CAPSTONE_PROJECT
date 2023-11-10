@@ -1,6 +1,7 @@
 const { createZaloPayOrder, callBack, checkZaloPayment, returnZaloMoney, checkZaloReturn } = require('../zalopay/payment');
 const Event = require('../model/eventModels');
-const { createTicket } = require('./ticketController');
+const Client = require('../model/clientsModel');
+const Order = require('../model/orderModel');
 
 async function createQRcode(req, res) {
     try {
@@ -75,10 +76,30 @@ async function createCheckReturn(req, res) {
     }
 }
 
+async function getOrdersByClient(req, res) {
+    try {
+        const { _idClient } = req.body;
+        // Kiểm tra sự tồn tại của client
+        const client = await Client.findById(_idClient);
+        if (!client) {
+            return res.status(400).json({
+                status: false,
+                message: 'Client không tồn tại',
+            });
+        }
+        const orders = await Order.find({ client_id: _idClient });
+        res.status(200).json({ orders });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
 module.exports = {
     createQRcode,
     callBackZalo,
     createCheckPayment,
     returnMoney,
-    createCheckReturn
+    createCheckReturn,
+    getOrdersByClient
 }
