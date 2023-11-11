@@ -1,6 +1,6 @@
 const Organizer = require('../model/organizersModels');
 const Event = require('../model/eventModels');
-const upLoadImg = require("../controllers/eventController");
+const { upLoadImg } = require("../controllers/authController");
 const unorm = require('unorm');
 
 /*=============================
@@ -37,6 +37,7 @@ function generateEventDate(event_date) {
         event_areas: date.event_areas.map(area => ({
             name_areas: area.name_areas,
             total_row: area.total_row,
+            ticket_price: area.ticket_price,
             rows: area.rows.map(row => ({
                 row_name: row.row_name,
                 total_chair: row.total_chair,
@@ -415,7 +416,7 @@ function getEventStatus(event) {
     const lastEventDate = event.event_date[0].date;
     const isActive = event.isActive;
 
-    if (currentDate < firstSaleDate || !isActive ) {
+    if (currentDate < firstSaleDate || !isActive) {
         return 'UPCOMING';
     } else if (currentDate >= firstSaleDate && currentDate <= lastEventDate) {
         return 'HAPPENNING';

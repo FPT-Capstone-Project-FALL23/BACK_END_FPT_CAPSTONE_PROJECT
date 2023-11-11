@@ -30,6 +30,7 @@ const chairSchema = new mongoose.Schema({
 const areasSchema = new mongoose.Schema({
     name_areas: String,
     total_row: Number,
+    ticket_price: Number,
     rows: [{
         row_name: String,
         total_chair: Number,
@@ -49,7 +50,7 @@ const eventSchema = new mongoose.Schema({
     type_of_event: { type: String },
     eventImage: { type: String },
     type_layout: { type: String },
-    maxTicketInOrder: {type: Number},
+    maxTicketInOrder: { type: Number },
     event_date: [{
         day_number: Number,
         date: Date,
