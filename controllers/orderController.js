@@ -1,6 +1,7 @@
 const { createZaloPayOrder, callBack, checkZaloPayment, returnZaloMoney, checkZaloReturn } = require('../zalopay/payment');
 const Event = require('../model/eventModels');
-const { createTicket } = require('./ticketController');
+const Client = require('../model/clientsModel');
+const Order = require('../model/orderModel');
 
 async function createQRcode(req, res) {
     try {
@@ -75,10 +76,77 @@ async function createCheckReturn(req, res) {
     }
 }
 
+async function getOrdersByClient(req, res) {
+    try {
+        const { _idClient } = req.body;
+        // Kiểm tra sự tồn tại của client
+        const client = await Client.findById(_idClient);
+        if (!client) {
+            return res.status(400).json({
+                status: false,
+                message: 'Client không tồn tại',
+            });
+        }
+        const orders = await Order.find({ client_id: _idClient });
+        res.status(200).json({ orders });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+async function getOrderDetail(req, res) {
+    try {
+        const { _idOrder } = req.body;
+        const order = await Order.findById(_idOrder);
+        if (!order) {
+            return res.status(400).json({
+                status: false,
+                message: 'Order không tồn tại',
+            });
+        }
+        const _idEvent = order.event_id;
+        const chairIds = order.tickets.map(ticket => ticket.chair_id);
+        const event = await Event.findById(_idEvent);
+        const eventName = event.event_name;
+        let eventDate = null;
+        let classTicket = null;
+        let Chairs = [];
+        const totalPrice = order.totalAmount;
+        const transaction = order.transaction_date;
+
+        for (const chairId of chairIds) {
+            event.event_date.forEach((date) => {
+                //xác định ngày diễn ra sự kiện
+                eventDate = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
+                //Xác định khu vực sự kiện
+                //Xác định vị trí ghế
+                date.event_areas.forEach((area) => {
+                    area.rows.forEach((row) => {
+                        const chair = row.chairs.find((c) => c._id.toString() == chairId);
+                        if (chair) {
+                            Chairs.push(chair.chair_name);
+                            classTicket = area.name_areas;
+                        }
+                    });
+                });
+            });
+        }
+
+        res.status(200).json({ data: { eventName, eventDate, classTicket, Chairs, totalPrice, transaction } });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+
 module.exports = {
     createQRcode,
     callBackZalo,
     createCheckPayment,
     returnMoney,
-    createCheckReturn
+    createCheckReturn,
+    getOrdersByClient,
+    getOrderDetail
 }

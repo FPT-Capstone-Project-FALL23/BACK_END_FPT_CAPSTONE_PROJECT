@@ -15,14 +15,14 @@ function createZaloPayOrder(describe, amount) {
     const order = {
         app_id: config.appid,
         app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
-        app_user: "ZaloPayDemo",
+        app_user: "0935653650",
         app_time: Date.now(),
         item: JSON.stringify(items),
         embed_data: JSON.stringify(embed_data),
         amount: amount,
         description: describe,
         bank_code: "zalopayapp",
-        callback_url: "http://localhost:8080/api/order/callback",
+        callback_url: "https://7293-2402-800-629c-7db7-dc14-7738-27ea-5b58.ngrok-free.app/api/order/callback",
     };
 
     const data = config.appid + "|" + order.app_trans_id + "|" + order.app_user + "|" + order.amount + "|" + order.app_time + "|" + order.embed_data + "|" + order.item;
@@ -33,16 +33,28 @@ function createZaloPayOrder(describe, amount) {
 }
 
 function callBack(dataStr, reqMac) {
+    let result = {};
     try {
-        const mac = CryptoJS.HmacSHA256(dataStr, config.key2).toString();
+        let mac = CryptoJS.HmacSHA256(dataStr, config.key2).toString();
         if (reqMac !== mac) {
-            return { return_code: -1, return_message: "mac not equal" };
+            // callback không hợp lệ
+            result.return_code = -1;
+            result.return_message = "mac not equal";
         } else {
-            return { return_code: 1, return_message: "success" };
+            // thanh toán thành công
+            // merchant cập nhật trạng thái cho đơn hàng
+            let dataJson = JSON.parse(dataStr, config.key2);
+            console.log("update order's status = success where app_trans_id =", dataJson["app_trans_id"]);
+
+            result.return_code = 1;
+            result.return_message = "success";
+            result.dataJson = dataJson;
         }
-    } catch (error) {
-        return { return_code: 0, return_message: error.message };
+    } catch (ex) {
+        result.return_code = 0; // ZaloPay server sẽ callback lại (tối đa 3 lần)
+        result.return_message = ex.message;
     }
+    return result;
 }
 
 function checkZaloPayment(app_trans_id) {

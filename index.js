@@ -13,6 +13,7 @@ const orderRouter = require('./routes/orderRoutes');
 const notificationNewEvent = require('./controllers/notificationNewEvent');
 //const realtimeBuy = require('./controllers/realtimeBuy');
 
+const adminRouter = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -34,6 +35,8 @@ app.use("/api/event", eventRouter);
 app.use("/api/ticket", ticketRouter);
 //route api order
 app.use("/api/order", orderRouter);
+//route api admin
+app.use("/api/admin", adminRouter)
 
 app.use(express.json({ limit: '10mb' }));
 
