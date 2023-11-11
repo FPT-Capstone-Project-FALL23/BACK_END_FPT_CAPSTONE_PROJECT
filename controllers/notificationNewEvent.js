@@ -1,6 +1,8 @@
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
+const eventController  = require("../controllers/eventController");
+const Event = require('../model/eventModels');
 
 
 
@@ -8,12 +10,13 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+let bookingSeats = [];
 
 let onlineUsers = [];
 const offlineNotifications = {};
 
 io.on("connection", (socket) => {
-  console.log(`user connected : ${socket.id}`);
+  //console.log(`user connected : ${socket.id}`);
 
   socket.on("organizerId", (organizerId) => {
     onlineUsers.push({organizerId, socketId: socket.id});
@@ -37,8 +40,48 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on('book_seat', chairId => {
+    console.log(chairId + "book_seat");
+    
+    if(bookingSeats.includes(chairId.chairId)) {
+      // Trả về lỗi nếu đã có người đặt
+      socket.emit('booking_error');
+      return;
+    }
+    
+    // Thêm ghế vào danh sách đang đặt
+    bookingSeats.push(chairId.chairId);
+    console.log('success');
+    
+    // Gửi cho client ghế đã được đặt thành công
+    socket.broadcast.emit('booking_success', chairId.chairId);
+
+    // Sau 10p xóa ghế khỏi danh sách đang đặt
+    setTimeout(async () => {
+      if (bookingSeats.includes(chairId.chairId)) {
+        bookingSeats = bookingSeats.filter(s => s !== chairId.chairId);
+        socket.broadcast.emit('booking_timeend', chairId.chairId);
+      }
+      // Cập nhật lại cơ sở dữ liệu ở đây
+      try {
+        // Gọi hàm updateChairStatus từ module eventController
+        await eventController.updateChairStatus({
+            body: {
+                _idEvent: chairId._idEvent,
+                chairId: chairId.chairId,
+            },
+        });
+    } catch (error) {
+        console.error('Error updating chair status:', error);
+    }
+    }, 20 * 1000);
+
+    
+
+  });
+
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    //console.log(`User disconnected: ${socket.id}`);
     removeUser(socket.id);
   });
 
