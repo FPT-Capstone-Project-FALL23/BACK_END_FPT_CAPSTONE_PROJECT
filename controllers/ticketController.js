@@ -62,6 +62,9 @@ async function createTicket(req, res) {
 
         let buffers = [];
         let tickets = [];
+        let foundEventArea = null;
+        let foundChair = null;
+        let founDayEvent = null;
         // Lặp qua từng idchair để tạo vé và gửi qua email
         for (const chairId of chairIds) {
             // Tạo mã QR với các ID tương ứng
@@ -78,22 +81,41 @@ async function createTicket(req, res) {
                 width: 120,
                 quality: 0.8
             };
+            event.event_date.forEach((date) => {
+                //xác định ngày diễn ra sự kiện
+                founDayEvent = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
+                //Xác định khu vực sự kiện
+                //Xác định vị trí ghế
+                date.event_areas.forEach((area) => {
+                    area.rows.forEach((row) => {
+                        const chair = row.chairs.find((c) => c._id.toString() == chairId);
+                        if (chair) {
+                            foundChair = chair;
+                            foundEventArea = area.name_areas;
+                        }
+                    });
+                });
+            });
             const qrImageData = await QRCode.toDataURL(JSON.stringify(qrData), qrOptions);
-            let urlQRcode;
-            const dataImgAfterUpload = upLoadImg(qrImageData, "QRcode");
-            urlQRcode = (await dataImgAfterUpload).urlImage;
-            const pdfBuffer = await createTicketPDF(event, chairId, qrImageData, page);
+            const htmlContent = await htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrImageData);
+            const pdfBuffer = await PDFticket(htmlContent, page);
+            const imgTicket = await IMGticket(htmlContent, page);
+            let urlTicket;
+            const dataImgAfterUpload = upLoadImg(imgTicket, "Tickets");
+            urlTicket = (await dataImgAfterUpload).urlImage;
             //Ghi thông tin người mua vào ghế
             const dataChair = writeIdClientToChair(_idClient, chairId);
             finalDataChair = (await dataChair).writeToChair;
 
-            tickets.push({ chair_id: chairId, qrTicket: urlQRcode });
+            tickets.push({ chair_id: chairId, classTicket: foundEventArea, ChairName: foundChair.chair_name, ticket: urlTicket });
             buffers.push(pdfBuffer);
         }
         const order = new Order({
             client_id: _idClient,
             event_id: _idEvent,
             event_name: event.event_name,
+            event_date: founDayEvent,
+            event_location: event.event_location.city,
             totalAmount: totalAmount,
             tickets: tickets,
         });
@@ -115,26 +137,7 @@ async function createTicket(req, res) {
 ## Params: event, _idChair, qrImageData, page
 ## Result: pdfBuffer
 ===============================*/
-async function createTicketPDF(event, _idChair, qrImageData, page) {
-    let foundEventArea = null;
-    let foundChair = null;
-    let founDayEvent = null;
-
-    event.event_date.forEach((date) => {
-        //xác định ngày diễn ra sự kiện
-        founDayEvent = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
-        //Xác định khu vực sự kiện
-        //Xác định vị trí ghế
-        date.event_areas.forEach((area) => {
-            area.rows.forEach((row) => {
-                const chair = row.chairs.find((c) => c._id.toString() == _idChair);
-                if (chair) {
-                    foundChair = chair;
-                    foundEventArea = area.name_areas;
-                }
-            });
-        });
-    });
+async function htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrImageData) {
     const htmlContent = `<!DOCTYPE html>
     <html lang="en">
     
@@ -214,16 +217,27 @@ async function createTicketPDF(event, _idChair, qrImageData, page) {
     
     </html>`;
 
+    return htmlContent;
+}
+
+async function PDFticket(htmlContent, page) {
     // Set nội dung HTML vào trang
     await page.setContent(htmlContent);
 
     // Chuyển đổi trang HTML thành PDF
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
-
-    // Lưu pdfBuffer vào database hoặc làm gì đó khác nếu cần
-
     return pdfBuffer;
 }
+
+async function IMGticket(htmlContent, page) {
+    // Set nội dung HTML vào trang
+    await page.setContent(htmlContent);
+    // Tạo ảnh màn hình từ nội dung HTML
+    const imageBuffer = await page.screenshot({ encoding: 'base64', type: 'png', fullPage: true });
+
+    return `data:image/png;base64,${imageBuffer}`;
+}
+
 /*=============================
 ## Name function: sendTicketByEmail
 ## Describe: Gửi vé đến email

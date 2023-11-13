@@ -1,5 +1,5 @@
 const { createQRcode, callBackZalo, createCheckPayment, returnMoney, createCheckReturn, 
-    getOrdersByClient, getOrderDetail } = require("../controllers/orderController");
+    getOrdersByClient, getOrderDetail, getMyTicket } = require("../controllers/orderController");
 const orderRouter = require("express").Router();
 
 orderRouter.post("/createQRcode", createQRcode)
@@ -9,5 +9,6 @@ orderRouter.post("/returnMoney", returnMoney)
 orderRouter.post("/createCheckReturn", createCheckReturn)
 orderRouter.post("/getOrdersByClient", getOrdersByClient)
 orderRouter.post("/getOrderDetail", getOrderDetail)
+orderRouter.post("/getMyTicket", getMyTicket)
 
 module.exports = orderRouter
