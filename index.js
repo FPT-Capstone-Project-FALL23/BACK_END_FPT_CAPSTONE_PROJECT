@@ -17,12 +17,12 @@ const adminRouter = require('./routes/adminRoutes');
 
 const app = express();
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: 'Infinity' }));
 app.use(cors());
 
 
 app.use(express.static('public'));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: 'Infinity' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 //route to run api login and resign

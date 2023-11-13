@@ -6,7 +6,9 @@ const ticketSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: true,
     },
-    qrTicket: { type: String }
+    classTicket: { type: String },
+    ChairName: { type: String },
+    ticket: { type: String }
 });
 
 // Define the Order schema
@@ -22,6 +24,8 @@ const orderSchema = new mongoose.Schema({
         required: true,
     },
     event_name: { type: String },
+    event_date: { type: Date },
+    event_location: { type: String },
     totalAmount: { type: Number, required: true },
     transaction_date: { type: Date, default: Date.now },
     tickets: [ticketSchema],

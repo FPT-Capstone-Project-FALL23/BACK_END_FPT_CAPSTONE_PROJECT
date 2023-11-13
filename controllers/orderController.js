@@ -108,6 +108,12 @@ async function getOrderDetail(req, res) {
         const _idEvent = order.event_id;
         const chairIds = order.tickets.map(ticket => ticket.chair_id);
         const event = await Event.findById(_idEvent);
+        if (!event) {
+            return res.status(400).json({
+                status: false,
+                message: 'Event không tồn tại',
+            });
+        }
         const eventName = event.event_name;
         let eventDate = null;
         let classTicket = null;
@@ -140,6 +146,22 @@ async function getOrderDetail(req, res) {
     }
 }
 
+async function getMyTicket(req, res) {
+    try {
+        const { _idOrder } = req.body;
+        const order = await Order.findById(_idOrder);
+        if (!order) {
+            return res.status(400).json({
+                status: false,
+                message: 'Order không tồn tại',
+            });
+        }
+        res.status(200).json({ order });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
 
 module.exports = {
     createQRcode,
@@ -148,5 +170,6 @@ module.exports = {
     returnMoney,
     createCheckReturn,
     getOrdersByClient,
-    getOrderDetail
+    getOrderDetail,
+    getMyTicket
 }
