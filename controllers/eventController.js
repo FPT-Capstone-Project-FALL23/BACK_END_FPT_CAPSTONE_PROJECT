@@ -474,6 +474,7 @@ async function listEventOrganizer(req, res) {
             });
             // Thêm thông tin sự kiện và trạng thái vào danh sách kết quả
             eventList.push({
+                _idEvent: event._id,
                 eventName: event.event_name,
                 startDay: event.event_date[0].date,
                 totalEstimated: totalMoney,
@@ -503,36 +504,36 @@ async function listEventOrganizer(req, res) {
 ===============================*/
 async function updateChairStatus(req, res) {
     try {
-      const { _idEvent, chairId  } = req.body;
-      
-      const event = await Event.findById(_idEvent);
-      if (!event) {
-        return res.status(404).json({message: 'Không tìm thấy sự kiện'});
-      }
-      
-      // Tìm ghế cần cập nhật
-      const chair = findChairById(event, chairId );
-      
-      if (!chair) {
-        return res.status(404).json({message: 'Không tìm thấy ghế'});
-      }
-      
-      // Cập nhật trạng thái isBuy
-      chair.isBuy = !chair.isBuy; 
-      
-      // Lưu lại sự kiện
-      const updatedEvent = await event.save();
-      
-      res.json(updatedEvent);
-      
+        const { _idEvent, chairId } = req.body;
+
+        const event = await Event.findById(_idEvent);
+        if (!event) {
+            return res.status(404).json({ message: 'Không tìm thấy sự kiện' });
+        }
+
+        // Tìm ghế cần cập nhật
+        const chair = findChairById(event, chairId);
+
+        if (!chair) {
+            return res.status(404).json({ message: 'Không tìm thấy ghế' });
+        }
+
+        // Cập nhật trạng thái isBuy
+        chair.isBuy = !chair.isBuy;
+
+        // Lưu lại sự kiện
+        const updatedEvent = await event.save();
+
+        res.json(updatedEvent);
+
     } catch (error) {
-      console.error(error);
-      res.status(500).json({message: error.message});
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
-  }
-  
-  // Tìm ghế dựa trên id ghế
-  function findChairById(event, chairId ) {
+}
+
+// Tìm ghế dựa trên id ghế
+function findChairById(event, chairId) {
     let foundChair = null;
     event.event_date.some(date => {
         return date.event_areas.some(area => {
@@ -547,7 +548,119 @@ async function updateChairStatus(req, res) {
     });
 
     return foundChair;
-  }
+}
+
+async function statisticalAllEvent(req, res) {
+    try {
+        const { _idOrganizer } = req.body;
+
+        const events = await Event.find({ organizer_id: _idOrganizer });
+
+        // Initialize counters
+        let totalChairs = 0;
+        let totalSoldChairs = 0;
+        let totalCheckedInChairs = 0;
+        let totalMoney = 0;
+        let totalRevenue = 0;
+        // Loop through each event and calculate statistics
+        events.forEach((event) => {
+            totalRevenue = calculateTotalRevenue(event);
+            // Tính toán số tiền dự kiến
+            event.event_date[0].event_areas.forEach((area) => {
+                area.rows.forEach((row) => {
+                    totalMoney += row.total_chair * row.ticket_price;
+                });
+            });
+            event.event_date.forEach((day) => {
+                day.event_areas.forEach((area) => {
+                    area.rows.forEach((row) => {
+                        row.chairs.forEach((chair) => {
+                            totalChairs++;
+                            if (chair.isBuy) {
+                                totalSoldChairs++;
+                            }
+                            if (chair.isCheckin) {
+                                totalCheckedInChairs++;
+                            }
+                        });
+                    });
+                });
+            });
+        });
+        const percent = (totalRevenue / totalMoney) * 100
+        res.status(200).json({
+            status: true,
+            totalMoney,
+            totalRevenue,
+            percent,
+            totalChairs,
+            totalSoldChairs,
+            totalCheckedInChairs,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
+async function statisticalOneEvent(req, res) {
+    try {
+        const { _idEvent } = req.body;
+
+        const event = await Event.findById(_idEvent);
+
+        if (!event) {
+            return res.status(404).json({
+                status: false,
+                message: 'Event not found',
+            });
+        }
+
+        // Initialize counters
+        let totalChairs = 0;
+        let totalSoldChairs = 0;
+        let totalCheckedInChairs = 0;
+
+        // Loop through each day, area, row, and chair to calculate statistics
+        const totalRevenue = calculateTotalRevenue(event);
+        // Tính toán số tiền dự kiến
+        let totalMoney = 0;
+        event.event_date[0].event_areas.forEach((area) => {
+            area.rows.forEach((row) => {
+                totalMoney += row.total_chair * row.ticket_price;
+            });
+        });
+        event.event_date.forEach((day) => {
+            day.event_areas.forEach((area) => {
+                area.rows.forEach((row) => {
+                    row.chairs.forEach((chair) => {
+                        totalChairs++;
+                        if (chair.isBuy) {
+                            totalSoldChairs++;
+                        }
+                        if (chair.isCheckin) {
+                            totalCheckedInChairs++;
+                        }
+                    });
+                });
+            });
+        });
+        const percent = (totalRevenue / totalMoney) * 100
+
+        res.status(200).json({
+            status: true,
+            totalMoney,
+            totalRevenue,
+            percent,
+            totalChairs,
+            totalSoldChairs,
+            totalCheckedInChairs,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
 
 module.exports = {
     createEvent,
@@ -558,5 +671,7 @@ module.exports = {
     updateEvent,
     searchEvent,
     listEventOrganizer,
-    updateChairStatus
+    updateChairStatus,
+    statisticalAllEvent,
+    statisticalOneEvent
 };

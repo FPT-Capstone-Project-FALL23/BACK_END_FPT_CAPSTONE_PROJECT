@@ -56,19 +56,25 @@ async function returnMoney(req, res) {
     try {
         const { amount, _idEvent, zp_trans_id } = req.body;
         const event = await Event.findById(_idEvent);
+        if (!event) {
+            return res.status(400).json({
+                status: false,
+                message: 'Sự kiện không tồn tại',
+            });
+        }
         const description = `Hoàn trả tiền vé sự kiện ${event.event_name}`
         const response = await returnZaloMoney(amount, description, zp_trans_id);
         return res.json({ data: response.data })
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred');
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
 async function createCheckReturn(req, res) {
     try {
-        const { app_trans_id } = req.body;
-        const response = await checkZaloReturn(app_trans_id);
+        const { m_refund_id } = req.body;
+        const response = await checkZaloReturn(m_refund_id);
         return res.json({ data: response.data })
     } catch (error) {
         console.error(error);
@@ -87,7 +93,8 @@ async function getOrdersByClient(req, res) {
                 message: 'Client không tồn tại',
             });
         }
-        const orders = await Order.find({ client_id: _idClient });
+        const orders = await Order.find({ client_id: _idClient })
+            .sort({ transaction_date: -1 });
         res.status(200).json({ orders });
     } catch (error) {
         console.error(error);

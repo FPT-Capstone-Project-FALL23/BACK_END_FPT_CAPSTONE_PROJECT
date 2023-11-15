@@ -484,6 +484,13 @@ async function sendTicketByEmail(email, client, buffers) {
     sendMailToUser(mailOptions)
 }
 
+async function returnTicket(req, res) {
+    try {
+
+    } catch (error) {
+
+    }
+}
 module.exports = {
     createTicket,
 };
