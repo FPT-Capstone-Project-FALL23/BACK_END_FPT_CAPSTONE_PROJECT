@@ -79,6 +79,7 @@ const eventSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  create_date: { type: Date, default: Date.now },
 });
 
 // Create the event model
