@@ -8,7 +8,7 @@ const eventRouter = require('./routes/eventRoutes');
 const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
 const orderRouter = require('./routes/orderRoutes');
-
+const checkinRouter = require('./routes/checkinRoutes');
 
 const notificationNewEvent = require('./controllers/notificationNewEvent');
 
@@ -37,6 +37,8 @@ app.use("/api/ticket", ticketRouter);
 app.use("/api/order", orderRouter);
 //route api admin
 app.use("/api/admin", adminRouter)
+//route api checkin
+app.use("/api/checkin", checkinRouter);
 
 app.use(express.json({ limit: '10mb' }));
 

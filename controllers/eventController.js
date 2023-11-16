@@ -454,7 +454,7 @@ async function listEventOrganizer(req, res) {
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
 
         const events = await Event.find({ organizer_id: _idOrganizer })
-            .sort({ isHot: -1, 'event_date.date': 1 })
+            .sort({ isHot: -1, create_date: -1 })
             .skip(skip)
             .limit(limit);
 
