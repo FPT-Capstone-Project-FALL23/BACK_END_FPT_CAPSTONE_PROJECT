@@ -2,14 +2,14 @@ const mongoose = require('mongoose');
 
 //Define the schema for the Organizer collection
 const organizerSchema = new mongoose.Schema({
-    user_id: { 
+    user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         require: true,
     },
     organizer_name: { type: String },
     avatarImage: { type: String },
-    organizer_type: [{ type: String}],
+    organizer_type: [{ type: String }],
     phone: { type: String },
     website: { type: String },
     founded_date: { type: Date },
