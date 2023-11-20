@@ -11,18 +11,19 @@ const orderRouter = require('./routes/orderRoutes');
 
 
 const notificationNewEvent = require('./controllers/notificationNewEvent');
-//const realtimeBuy = require('./controllers/realtimeBuy');
+
 
 const adminRouter = require('./routes/adminRoutes');
+const ratingRouter = require('./routes/ratingRoutes');
 
 const app = express();
 
-app.use(bodyParser.json({ limit: 'Infinity' }));
+app.use(bodyParser.json());
 app.use(cors());
 
 
 app.use(express.static('public'));
-app.use(express.json({ limit: 'Infinity' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 //route to run api login and resign
@@ -36,7 +37,9 @@ app.use("/api/ticket", ticketRouter);
 //route api order
 app.use("/api/order", orderRouter);
 //route api admin
-app.use("/api/admin", adminRouter)
+app.use("/api/admin", adminRouter);
+//route api rating
+app.use("/api/rating", ratingRouter)
 
 app.use(express.json({ limit: '10mb' }));
 
