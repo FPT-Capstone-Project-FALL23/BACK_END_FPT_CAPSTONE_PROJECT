@@ -80,6 +80,13 @@ const eventSchema = new mongoose.Schema({
     default: false,
   },
   create_date: { type: Date, default: Date.now },
+  ratings: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Rating' }],
+  totalRating: {
+    type: Number,
+    default: 0,
+  }
 });
 
 // Create the event model
