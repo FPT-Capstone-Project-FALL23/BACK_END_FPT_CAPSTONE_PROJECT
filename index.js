@@ -14,6 +14,7 @@ const notificationNewEvent = require('./controllers/notificationNewEvent');
 
 
 const adminRouter = require('./routes/adminRoutes');
+const ratingRouter = require('./routes/ratingRoutes');
 
 const app = express();
 
@@ -36,9 +37,11 @@ app.use("/api/ticket", ticketRouter);
 //route api order
 app.use("/api/order", orderRouter);
 //route api admin
-app.use("/api/admin", adminRouter)
+app.use("/api/admin", adminRouter);
 //route api checkin
 app.use("/api/checkin", checkinRouter);
+//route api rating
+app.use("/api/rating", ratingRouter);
 
 app.use(express.json({ limit: '10mb' }));
 
