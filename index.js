@@ -9,6 +9,7 @@ const ticketRouter = require('./routes/ticketRoutes');
 const bodyParser = require('body-parser');
 const orderRouter = require('./routes/orderRoutes');
 const checkinRouter = require('./routes/checkinRoutes');
+const refundRouter = require('./routes/refundRoutes');
 
 const notificationNewEvent = require('./controllers/notificationNewEvent');
 
@@ -42,6 +43,8 @@ app.use("/api/admin", adminRouter);
 app.use("/api/checkin", checkinRouter);
 //route api rating
 app.use("/api/rating", ratingRouter);
+//route api refund
+app.use("/api/refund", refundRouter);
 
 app.use(express.json({ limit: '10mb' }));
 

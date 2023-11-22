@@ -4,21 +4,38 @@ async function getEventToday(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
         const eventsToday = await Event.find({
-            'event_date.date': {
-                $gte: today,
-                $lt: tomorrow,
+            'event_date': {
+                $elemMatch: {
+                    date: {
+                        $gte: today,
+                        $lt: tomorrow,
+                    }
+                }
+            },
+            organizer_id: _idOrganizer,
+            isActive: true,
+        });
+        const totalEvents = await Event.countDocuments({
+            'event_date': {
+                $elemMatch: {
+                    date: {
+                        $gte: today,
+                        $lt: tomorrow,
+                    }
+                }
             },
             organizer_id: _idOrganizer,
             isActive: true,
         });
         res.status(200).json({
             status: true,
-            eventsToday
+            eventsToday,
+            message: `Có ${totalEvents} sự kiện đã tìm thấy`,
         });
     } catch (error) {
         console.error(error);
@@ -71,9 +88,12 @@ async function check_in(req, res) {
         if (chair.client_id === null || chair.client_id.toString() !== userId) {
             return res.status(400).json({ status: false, message: 'Check-in failed. User does not own the chair.' });
         }
+        if (chair.isCheckin === true ) {
+            return res.status(400).json({ status: false, message: 'Check-in failed. Ticket has been used.' });
+        }
         // Thực hiện check-in
-        /* chair.isCheckin = true;
-        await event.save(); */
+        chair.isCheckin = true;
+        await event.save();
 
         return res.status(200).json({ status: true, message: 'Check-in successful!' });
     } catch (error) {
