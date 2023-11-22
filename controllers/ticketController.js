@@ -5,6 +5,7 @@ const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const Event = require('../model/eventModels');
 const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
+const { checkZaloPayment } = require('../zalopay/payment');
 
 /*=============================
 ## Name function: writeIdClientToChair
@@ -39,13 +40,13 @@ async function writeIdClientToChair(_idClient, _idChair) {
 ===============================*/
 async function createTicket(req, res) {
     try {
-        const { _idClient, _idEvent, chairIds, totalAmount, email } = req.body;
+        const { _idClient, _idEvent, chairIds, totalAmount, email, app_trans_id } = req.body;
         // Kiểm tra sự tồn tại của client
         const client = await Client.findById(_idClient);
         if (!client) {
             return res.status(400).json({
                 status: false,
-                message: 'Client không tồn tại',
+                message: 'Client does not exist',
             });
         }
         // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
@@ -53,9 +54,17 @@ async function createTicket(req, res) {
         if (!event) {
             return res.status(400).json({
                 status: false,
-                message: 'Sự kiện không tồn tại',
+                message: 'Event does not exist',
             });
         }
+        const response = await checkZaloPayment(app_trans_id);
+        if (response.data.return_code != 1) {
+            return res.status(400).json({
+                status: false,
+                message: 'Payment failed',
+            });
+        }
+        const zp_trans_id = response.data.zp_trans_id;
         // Mở trình duyệt với Puppeteer
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
@@ -65,6 +74,7 @@ async function createTicket(req, res) {
         let foundEventArea = null;
         let foundChair = null;
         let founDayEvent = null;
+        let ticket_price = null;
         // Lặp qua từng idchair để tạo vé và gửi qua email
         for (const chairId of chairIds) {
             // Tạo mã QR với các ID tương ứng
@@ -92,6 +102,7 @@ async function createTicket(req, res) {
                         if (chair) {
                             foundChair = chair;
                             foundEventArea = area.name_areas;
+                            ticket_price = area.ticket_price;
                         }
                     });
                 });
@@ -107,7 +118,12 @@ async function createTicket(req, res) {
             const dataChair = writeIdClientToChair(_idClient, chairId);
             finalDataChair = (await dataChair).writeToChair;
 
-            tickets.push({ chair_id: chairId, classTicket: foundEventArea, ChairName: foundChair.chair_name, ticket: urlTicket });
+            tickets.push({ 
+                chair_id: chairId, 
+                classTicket: foundEventArea, 
+                chairName: foundChair.chair_name, 
+                ticket_price: ticket_price, 
+                ticket: urlTicket });
             buffers.push(pdfBuffer);
         }
         const order = new Order({
@@ -117,6 +133,7 @@ async function createTicket(req, res) {
             event_date: founDayEvent,
             event_location: event.event_location.city,
             totalAmount: totalAmount,
+            zp_trans_id: zp_trans_id,
             tickets: tickets,
         });
         await order.save();
@@ -207,10 +224,10 @@ async function htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrIma
             </div>
             <h3 style="color: red;">Attention</h3>
             <div style="display: flex; align-items: start; flex-direction: column; padding-left: 20px;">
-                <p>1. Đưa mã cho nhân viên quét mã để checkin vào sự kiện</p>
-                <p>2. Có thể hoàn vé trước khi sự kiện bắt đầu 24h</p>
-                <p>3. Vé chỉ có giá trị sử dụng 1 lần</p>
-                <p>4. Không chia sẻ vé cho bất kỳ ai</p>
+                <p>1. Give the QR code to the staff to scan the code to check in to the event</p>
+                <p>2. Tickets can be refunded 24 hours before the event starts</p>
+                <p>3. Tickets are only valid for one-time use</p>
+                <p>4. Do not share tickets with anyone</p>
             </div>
         </div>
     </body>
@@ -433,7 +450,7 @@ async function sendTicketByEmail(email, client, buffers) {
                                                                             style="background-color: #ffffff">Chúc mừng bạn đã mua vé thành công! Vui lòng chuẩn bị sẵn vé tại nơi soát vé. </span></span>
                                                                 </p>
                                                                 <p><span style="color: #993300"><span
-                                                                            style="background-color: #ffffff">Vé sẽ được đính kèm với email này</span></span>
+                                                                            style="background-color: #ffffff">Vé sẽ được đính kèm trong email này</span></span>
                                                                 </p>
                                                                 &nbsp;
                                                             </td>
@@ -484,13 +501,6 @@ async function sendTicketByEmail(email, client, buffers) {
     sendMailToUser(mailOptions)
 }
 
-async function returnTicket(req, res) {
-    try {
-
-    } catch (error) {
-
-    }
-}
 module.exports = {
     createTicket,
 };

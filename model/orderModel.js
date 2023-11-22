@@ -7,7 +7,9 @@ const ticketSchema = new mongoose.Schema({
         required: true,
     },
     classTicket: { type: String },
-    ChairName: { type: String },
+    chairName: { type: String },
+    ticket_price: { type: Number },
+    isRefund: { type: Boolean, default: false },
     ticket: { type: String }
 });
 
@@ -28,6 +30,7 @@ const orderSchema = new mongoose.Schema({
     event_location: { type: String },
     totalAmount: { type: Number, required: true },
     transaction_date: { type: Date, default: Date.now },
+    zp_trans_id: { type: String },
     tickets: [ticketSchema],
 });
 
