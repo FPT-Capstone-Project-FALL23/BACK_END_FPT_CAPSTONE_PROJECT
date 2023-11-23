@@ -13,6 +13,7 @@ async function createRating(req, res) {
         }
       const event = await Event.findById(eventId);
       const user = await User.findById(userId);
+      
   
       if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -24,6 +25,16 @@ async function createRating(req, res) {
       });
 
       event.ratings.push(newRating._id);
+      let sumRating = 0;
+
+    
+    for (const ratingId of event.ratings) {
+      const rating = await Rating.findById(ratingId);
+      sumRating += rating.star;
+    }
+
+    let avgRating = sumRating / event.ratings.length;
+    event.totalRating = avgRating;
 
       await event.save();
       

@@ -496,59 +496,7 @@ async function listEventOrganizer(req, res) {
     }
 }
 
-/*=============================
-## Name function: updateChairStatus
-## Describe: cập nhật status
-## Params: _idevent, id_chair
-## Result: status, message,data
-===============================*/
-async function updateChairStatus(req, res) {
-    try {
-        const { _idEvent, chairId } = req.body;
 
-        const event = await Event.findById(_idEvent);
-        if (!event) {
-            return res.status(404).json({ message: 'Không tìm thấy sự kiện' });
-        }
-
-        // Tìm ghế cần cập nhật
-        const chair = findChairById(event, chairId);
-
-        if (!chair) {
-            return res.status(404).json({ message: 'Không tìm thấy ghế' });
-        }
-
-        // Cập nhật trạng thái isBuy
-        chair.isBuy = !chair.isBuy;
-
-        // Lưu lại sự kiện
-        const updatedEvent = await event.save();
-
-        res.json(updatedEvent);
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: error.message });
-    }
-}
-
-// Tìm ghế dựa trên id ghế
-function findChairById(event, chairId) {
-    let foundChair = null;
-    event.event_date.some(date => {
-        return date.event_areas.some(area => {
-            return area.rows.some(row => {
-                const chair = row.chairs.find(chair => chair.id === chairId);
-                if (chair) {
-                    foundChair = chair;
-                    return true; // Dừng tìm kiếm khi tìm thấy ghế
-                }
-            });
-        });
-    });
-
-    return foundChair;
-}
 
 async function statisticalAllEvent(req, res) {
     try {
@@ -662,6 +610,8 @@ async function statisticalOneEvent(req, res) {
     }
 }
 
+
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -671,7 +621,7 @@ module.exports = {
     updateEvent,
     searchEvent,
     listEventOrganizer,
-    updateChairStatus,
     statisticalAllEvent,
-    statisticalOneEvent
+    statisticalOneEvent,
+    
 };
