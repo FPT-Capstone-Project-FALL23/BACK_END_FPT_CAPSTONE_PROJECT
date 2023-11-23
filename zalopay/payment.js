@@ -6,7 +6,7 @@ const qs = require('qs');
 
 function createZaloPayOrder(describe, amount) {
     const embed_data = {
-        redirectUrl: "http://localhost:3000/"
+        redirectUrl: "http://localhost:3000/payment_completed"
     };
 
     const items = [{}];
