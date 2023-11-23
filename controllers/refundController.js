@@ -3,6 +3,8 @@ const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const RefundOrder = require('../model/refundOrderModel');
 const Organizer = require('../model/organizersModels');
+const { returnZaloMoney } = require('../zalopay/payment');
+
 
 async function createRefund(req, res) {
     try {
@@ -81,14 +83,15 @@ async function createRefund(req, res) {
         res.status(200).json({ status: true, message: 'Ticket refund requested' });
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred');
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
 async function getListRefund(req, res) {
     try {
         const { _idOrganizer } = req.body;
-        const refund = await RefundOrder.find({ organizer_id: _idOrganizer });
+        const refund = await RefundOrder.find({ organizer_id: _idOrganizer })
+            .sort({ isRefund: 1 });
         if (!refund) {
             return res.status(400).json({
                 status: false,
@@ -98,7 +101,7 @@ async function getListRefund(req, res) {
         res.status(200).json({ status: true, refund });
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred');
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
@@ -116,21 +119,63 @@ async function acceptRefund(req, res) {
                 message: 'Refund Order does not exist',
             });
         }
-        res.status(200).json({ message: 'Accept Refund Tickets' });
+        res.status(200).json({ status: true, message: 'Accept Refund Tickets' });
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred');
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
+async function listIsRefund(req, res) {
+    try {
+        const listRefund = await RefundOrder.find({ isRefund: true, refunded: false });
+        if (!listRefund) {
+            return res.status(400).json({
+                status: false,
+                message: 'Dont have any Refund Order',
+            });
+        }
+        res.status(200).json({ status: true, listRefund });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 
 async function refundMoney(req, res) {
     try {
-        
+        const { _idRefund } = req.body;
+        //const refund = await RefundOrder.findById(_idRefund);
+        const refund = await RefundOrder.findOneAndUpdate(
+            { _id: _idRefund },
+            { $set: { refunded: true } },
+            { new: true }
+        );
+        if (!refund) {
+            return res.status(400).json({
+                status: false,
+                message: 'Refund Order does not exist',
+            });
+        }
+        const _idEvent = refund.event_id;
+        const event = await Event.findById(_idEvent);
+        if (!event) {
+            return res.status(400).json({
+                status: false,
+                message: 'Event does not exist',
+            });
+        }
+        const description = `Hoàn trả tiền vé sự kiện ${event.event_name}`;
+        const zp_trans_id = refund.zp_trans_id;
+        const amount = refund.money_refund;
+        const response = await returnZaloMoney(amount, description, zp_trans_id);
+        return res.json({ status: true, data: response.data })
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred');
+        res.status(500).json({ status: false, message: error.message });
     }
 }
+
 module.exports = {
-    createRefund, getListRefund, acceptRefund
+    createRefund, getListRefund, acceptRefund, listIsRefund, refundMoney
 }

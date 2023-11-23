@@ -118,12 +118,13 @@ async function createTicket(req, res) {
             const dataChair = writeIdClientToChair(_idClient, chairId);
             finalDataChair = (await dataChair).writeToChair;
 
-            tickets.push({ 
-                chair_id: chairId, 
-                classTicket: foundEventArea, 
-                chairName: foundChair.chair_name, 
-                ticket_price: ticket_price, 
-                ticket: urlTicket });
+            tickets.push({
+                chair_id: chairId,
+                classTicket: foundEventArea,
+                chairName: foundChair.chair_name,
+                ticket_price: ticket_price,
+                ticket: urlTicket
+            });
             buffers.push(pdfBuffer);
         }
         const order = new Order({
@@ -141,10 +142,10 @@ async function createTicket(req, res) {
         await sendTicketByEmail(email, client, buffers);
         // Đóng trình duyệt
         await browser.close();
-        res.status(200).json({ message: 'Tickets created and sent successfully.' });
+        res.status(200).json({ status: true, message: 'Tickets created and sent successfully.' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ status: false, message: error.message });
     }
 }
 

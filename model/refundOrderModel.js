@@ -34,6 +34,7 @@ const refundOrderSchema = new mongoose.Schema({
     money_refund: { type: Number },
     zp_trans_id: { type: String },
     isRefund: { type: Boolean, default: false },
+    refunded: { type: Boolean, default: false },
     refund_date: { type: Date, default: Date.now },
     tickets: [ticketSchema],
 
