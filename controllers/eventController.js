@@ -413,7 +413,7 @@ async function searchEvent(req, res) {
 function getEventStatus(event) {
     const currentDate = new Date();
     const firstSaleDate = event.sales_date.start_sales_date;
-    const lastEventDate = event.event_date[0].date;
+    const lastEventDate = event.event_date[event.event_date.length - 1].date;
     const isActive = event.isActive;
 
     if (currentDate < firstSaleDate || !isActive) {
@@ -461,7 +461,7 @@ async function listEventOrganizer(req, res) {
         // Tạo một mảng kết quả để lưu thông tin sự kiện với trạng thái
         const eventList = [];
 
-        // Lặp qua danh sách sự kiện và trích xuất thông tin bạn muốn
+        // Lặp qua danh sách sự kiện và trích xuất thông tin
         events.forEach((event) => {
             const eventStatus = getEventStatus(event);
             const totalRevenue = calculateTotalRevenue(event);
@@ -483,10 +483,14 @@ async function listEventOrganizer(req, res) {
                 isActive: event.isActive,
             });
         });
-
+        const sortedEvents = eventList.sort((a, b) => {
+            const sort = { "HAPPENNING": 1, "UPCOMING": 2, "FINISHED": 3 };
+            return sort[a.eventStatus] - sort[b.eventStatus];
+        });
+        
         res.status(200).json({
             status: true,
-            data: eventList,
+            data: sortedEvents,
             currentPage: page,
             totalPages: totalPages,
         });
@@ -623,5 +627,5 @@ module.exports = {
     listEventOrganizer,
     statisticalAllEvent,
     statisticalOneEvent,
-    
+
 };
