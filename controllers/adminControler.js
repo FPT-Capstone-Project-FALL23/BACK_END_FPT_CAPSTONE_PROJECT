@@ -250,8 +250,13 @@ async function setIsActiveOrganizer(req, res) {
 ===============================*/
 async function setIsActiveEvent(req, res) {
     try {
-        const { _idEvent } = req.body;
-        const event = await Event.findByIdAndUpdate(_idEvent, { isActive: true }, { new: true })
+        const { _idEvent, isHot } = req.body;
+        let event;
+        if (isHot) {
+            event = await Event.findByIdAndUpdate(_idEvent, { isActive: true, isHot: true }, { new: true })
+        } else {
+            event = await Event.findByIdAndUpdate(_idEvent, { isActive: true }, { new: true })
+        }
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
@@ -424,7 +429,7 @@ async function getDetailEventActiveIsFalse(req, res) {
             maxTicketInOrder: event.maxTicketInOrder,
             event_description: event.event_description,
             isHot: event.isHot,
-            create_date: event.create_date,
+            create_date: event.create_date.toISOString().split('T')[0],
             sales_date: event.sales_date,
             event_date: event.event_date
         };
