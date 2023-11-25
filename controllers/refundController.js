@@ -91,7 +91,7 @@ async function getListRefund(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const refund = await RefundOrder.find({ organizer_id: _idOrganizer })
-            .sort({ isRefund: 1 });
+            .sort({ isRefund: 1, refund_date: -1 });
         if (!refund) {
             return res.status(400).json({
                 status: false,
@@ -119,6 +119,27 @@ async function acceptRefund(req, res) {
                 message: 'Refund Order does not exist',
             });
         }
+        const chairIds = [];
+        refund.tickets.forEach(ticket => {
+            chairIds.push(ticket.chair_id);
+        });
+        for (const _idChair of chairIds) {
+            await Event.findOneAndUpdate(
+                {
+                    'event_date.event_areas.rows.chairs._id': _idChair,
+                },
+                {
+                    $set: {
+                        'event_date.$[].event_areas.$[].rows.$[].chairs.$[chair].client_id': null,
+                        'event_date.$[].event_areas.$[].rows.$[].chairs.$[chair].isBuy': false,
+                    },
+                },
+                {
+                    arrayFilters: [{ 'chair._id': _idChair }],
+                    new: true,
+                }
+            );
+        }
         res.status(200).json({ status: true, message: 'Accept Refund Tickets' });
     } catch (error) {
         console.error(error);
@@ -145,7 +166,6 @@ async function listIsRefund(req, res) {
 async function refundMoney(req, res) {
     try {
         const { _idRefund } = req.body;
-        //const refund = await RefundOrder.findById(_idRefund);
         const refund = await RefundOrder.findOneAndUpdate(
             { _id: _idRefund },
             { $set: { refunded: true } },
@@ -169,7 +189,7 @@ async function refundMoney(req, res) {
         const zp_trans_id = refund.zp_trans_id;
         const amount = refund.money_refund;
         const response = await returnZaloMoney(amount, description, zp_trans_id);
-        return res.json({ status: true, data: response.data })
+        return res.json({ status: true, data: response.data, message: "Refund was successful" })
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
