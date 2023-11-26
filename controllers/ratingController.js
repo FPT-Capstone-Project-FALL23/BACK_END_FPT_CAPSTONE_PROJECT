@@ -53,5 +53,46 @@ async function createRating(req, res) {
     }
 }
 
+async function deleteRating(req, res) {
+  try {
+    const { ratingId } = req.body;
+    console.log(req.body);
+    const rating = await Rating.findById(ratingId);
 
-module.exports = {createRating };
+    if (!rating) {
+      return res.status(404).json({ msg: 'Rating not found' });
+    }
+    const event = await Event.findById(rating.event);
+    
+    event.ratings.pull(ratingId);
+
+    let sumRating = 0;
+
+    // Sử dụng for...of để có thể sử dụng await
+    for (const ratingId of event.ratings) {
+      const rating = await Rating.findById(ratingId);
+      
+      sumRating += rating.star;
+    }
+
+    let avgRating = 0;
+
+    if (event.ratings.length > 0) {
+      avgRating = sumRating / event.ratings.length;
+    }
+
+    event.totalRating = avgRating;
+
+    await event.save();
+    console.log('Updated Event:', event);
+    await Rating.deleteOne({ _id: ratingId });
+
+    res.json({ msg: 'Rating removed' });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).send('Server error');
+  }
+}
+
+
+module.exports = {createRating, deleteRating };
