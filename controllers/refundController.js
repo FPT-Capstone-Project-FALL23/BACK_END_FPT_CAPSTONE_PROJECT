@@ -108,6 +108,12 @@ async function getListRefund(req, res) {
 async function acceptRefund(req, res) {
     try {
         const { _idRefund, isRefund } = req.body;
+        if (!isRefund) {
+            return res.status(400).json({
+                status: false,
+                message: 'Reject to refund ticket',
+            });
+        }
         const refund = await RefundOrder.findOneAndUpdate(
             { _id: _idRefund },
             { $set: { isRefund: isRefund } },

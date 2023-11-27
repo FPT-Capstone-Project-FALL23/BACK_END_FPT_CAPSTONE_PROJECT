@@ -4,9 +4,9 @@ async function getEventToday(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
         const eventsToday = await Event.find({
             'event_date': {
@@ -79,7 +79,20 @@ async function check_in(req, res) {
         }
 
         // Tìm ghế cụ thể trong sự kiện
-        const chair = eventDay.event_areas[0].rows[0].chairs.find(chair => chair._id.toString() === chairId);
+        let chair = null;
+        // Duyệt qua tất cả các khu vực của sự kiện
+        for (const area of eventDay.event_areas) {
+            // Duyệt qua tất cả các hàng trong khu vực
+            for (const row of area.rows) {
+                // Tìm ghế trong hàng hiện tại
+                const foundChair = row.chairs.find(chair => chair._id.toString() === chairId);
+                // Nếu tìm thấy ghế thoát khỏi vòng lặp
+                if (foundChair) {
+                    chair = foundChair;
+                    break;
+                }
+            }
+        }
 
         if (!chair) {
             return res.status(400).json({ status: false, message: 'Check-in failed. Chair not found.' });
@@ -88,7 +101,7 @@ async function check_in(req, res) {
         if (chair.client_id === null || chair.client_id.toString() !== userId) {
             return res.status(400).json({ status: false, message: 'Check-in failed. User does not own the chair.' });
         }
-        if (chair.isCheckin === true ) {
+        if (chair.isCheckin === true) {
             return res.status(400).json({ status: false, message: 'Check-in failed. Ticket has been used.' });
         }
         // Thực hiện check-in
