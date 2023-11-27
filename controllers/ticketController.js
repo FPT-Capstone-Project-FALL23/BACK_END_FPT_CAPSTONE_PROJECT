@@ -93,7 +93,8 @@ async function createTicket(req, res) {
             };
             event.event_date.forEach((date) => {
                 //xác định ngày diễn ra sự kiện
-                founDayEvent = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
+                founDayEvent = date.date.toDateString().split('GMT')[0]/* .trim() */;//tách xóa chữ múi giờ Đông Dương
+                timeEvent = date.date.toTimeString().split(" ")[0];
                 //Xác định khu vực sự kiện
                 //Xác định vị trí ghế
                 date.event_areas.forEach((area) => {
@@ -108,7 +109,7 @@ async function createTicket(req, res) {
                 });
             });
             const qrImageData = await QRCode.toDataURL(JSON.stringify(qrData), qrOptions);
-            const htmlContent = await htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrImageData);
+            const htmlContent = await htmlTicket(event, foundEventArea, foundChair, founDayEvent, timeEvent, qrImageData);
             const pdfBuffer = await PDFticket(htmlContent, page);
             const imgTicket = await IMGticket(htmlContent, page);
             let urlTicket;
@@ -155,7 +156,7 @@ async function createTicket(req, res) {
 ## Params: event, _idChair, qrImageData, page
 ## Result: pdfBuffer
 ===============================*/
-async function htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrImageData) {
+async function htmlTicket(event, foundEventArea, foundChair, founDayEvent, timeEvent, qrImageData) {
     const htmlContent = `<!DOCTYPE html>
     <html lang="en">
     
@@ -215,6 +216,7 @@ async function htmlTicket(event, foundEventArea, foundChair, founDayEvent, qrIma
             <div class="content">
                 <P>Event Name: ${event.event_name}</p>
                 <p>Date: ${founDayEvent}</p>
+                <p>Time: ${timeEvent}</p>
                 <p>Location: ${event.event_location.specific_address} - ${event.event_location.ward} -
                     ${event.event_location.district} - ${event.event_location.city}</p>
                 <p>Class Ticket: <span style="font-size: 20px; font-weight: 600;">${foundEventArea}</span></p>
@@ -265,7 +267,7 @@ async function IMGticket(htmlContent, page) {
 async function sendTicketByEmail(email, client, buffers) {
     // Nội dung email
     const mailOptions = {
-        from: AUTH_EMAIL, // Thay thế bằng email của bạn
+        from: AUTH_EMAIL, 
         to: email,
         subject: 'TIKSEAT: MUA VÉ THÀNH CÔNG',
         html:
