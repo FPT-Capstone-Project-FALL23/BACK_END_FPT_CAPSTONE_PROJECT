@@ -1,6 +1,8 @@
 const Client = require("../model/clientsModel");
 const Event = require("../model/eventModels");
+const Order = require("../model/orderModel");
 const Organizer = require("../model/organizersModels");
+const RefundOrder = require("../model/refundOrderModel");
 const User = require("../model/usersModel");
 
 /*=============================
@@ -444,6 +446,136 @@ async function getDetailEventActiveIsFalse(req, res) {
     }
 }
 
+/*=============================
+## Name function: calculateTotalAmountAndAdminEarnings
+## Describe: tính tổng tiền đã bán và đaonh thủ của Admin
+## Params: events
+## Result: totalAmountSold
+===============================*/
+function calculateTotalAmountAndAdminEarnings(events) {
+
+    let totalAmountSold = 0;
+    let adminEarnings = 0;
+
+    events.forEach(event => {
+        event.event_date.forEach(date => {
+            date.event_areas.forEach(area => {
+                area.rows.forEach(row => {
+                    row.chairs.forEach(chair => {
+                        if (chair.isBuy) {
+                            totalAmountSold += row.ticket_price;
+                            const onePercentSeatsSold = row.ticket_price * 0.01;
+                            //quản trị viên kiếm được 1% giá vé cho mỗi ghế được bán
+                            adminEarnings += onePercentSeatsSold;
+                            console.log(`Admin Earnings from 1% Seats Sold: ${adminEarnings}`);
+                            console.log(`Total Amount Sold: ${totalAmountSold}`);
+                        }
+                    });
+                });
+            });
+        });
+    });
+    return { totalAmountSold, adminEarnings }
+}
+
+/*=============================
+## Name function: getTotalAmountSoldAllEventAndAdminEarnings
+## Describe: tổng tiền đã bán của tất cả sự kiện
+## Params: none
+## Result: status, message, data
+===============================*/
+async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
+    try {
+        const events = await Event.find({ isActive: true });
+
+
+        const totalAmount = calculateTotalAmountAndAdminEarnings(events);
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: totalAmount
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+async function calculateTotalMoneyRefunded() {
+    try {
+        const refundOrders = await RefundOrder.find({ refunded: true });
+
+        let totalMoneyRefunded = 0;
+        let ActualFare = 0;
+
+        refundOrders.forEach(refundOrder => {
+            totalMoneyRefunded += refundOrder.money_refund;
+            ActualFare = (refundOrder.money_refund * 1000) / 70
+        });
+
+        console.log(`Total Money Refunded: ${totalMoneyRefunded}`);
+        console.log(`percentage Of Payment: ${ActualFare}`);
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+function formatMoney(amount) {
+    const formattedAmount = amount.toLocaleString();
+    return formattedAmount;
+}
+
+/*=============================
+## Name function: getAllOrders
+## Describe: lấy tất cả các đơn đặt hàng, tính tổng số tiền và đếm giao dịch
+## Params: none
+## Result: status, message, data
+===============================*/
+async function getAllOrders(req, res) {
+    try {
+        const orders = await Order.find();
+        const totalTransactionAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+        const count = orders.length;
+
+
+        const formattedOrders = await Promise.all(orders.map(async (order) => {
+            return {
+                totalAmount: formatMoney(order.totalAmount),
+                event_date: order.event_date.toISOString().split('T')[0],
+                transaction_date: order.transaction_date.toISOString().split('T')[0],
+                event_name: order.event_name,
+                zp_trans_id: order.zp_trans_id,
+                numberOfTickets: order.tickets.length,
+                client: await getMailOfClient(order.client_id),
+            }
+        }));
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: {
+                totalTransactionAmount: formatMoney(totalTransactionAmount),
+                count: count,
+                orders: formattedOrders
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+async function getMailOfClient(user_id) {
+    const client = await Client.findById(user_id);
+    const user = await User.findById(client.user_id);
+    const fomatInfoClient = {
+        full_name: client.full_name,
+        email: user.email
+    }
+    return { fomatInfoClient };
+}
+
 module.exports = {
     getAllClients,
     getDetailClient,
@@ -454,5 +586,8 @@ module.exports = {
     setIsHotEvent,
     getAllOrganizersIsActiveFalse,
     getAllEventIsActiveFalse,
-    getDetailEventActiveIsFalse
+    getDetailEventActiveIsFalse,
+    getTotalAmountSoldAllEventAndAdminEarnings,
+    calculateTotalMoneyRefunded,
+    getAllOrders
 }
