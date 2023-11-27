@@ -255,7 +255,7 @@ async function setIsActiveOrganizer(req, res) {
 }
 async function sendEmailActiveOrganizer(email) {
     const mailOptions = {
-        from: AUTH_EMAIL, 
+        from: AUTH_EMAIL,
         to: email,
         subject: 'TIKSEAT: ACCOUNT HAS BEEN ACTIVATED',
         html:
@@ -949,9 +949,11 @@ function calculateTotalAmountAndAdminEarnings(events) {
                     row.chairs.forEach(chair => {
                         if (chair.isBuy) {
                             totalAmountSold += row.ticket_price;
+                            formatAmountSold = formatMoney(totalAmountSold);
                             const onePercentSeatsSold = row.ticket_price * 0.01;
                             //quản trị viên kiếm được 1% giá vé cho mỗi ghế được bán
                             adminEarnings += onePercentSeatsSold;
+                            formatAdminEarnings = formatMoney(adminEarnings);
                             console.log(`Admin Earnings from 1% Seats Sold: ${adminEarnings}`);
                             console.log(`Total Amount Sold: ${totalAmountSold}`);
                         }
@@ -960,7 +962,7 @@ function calculateTotalAmountAndAdminEarnings(events) {
             });
         });
     });
-    return { totalAmountSold, adminEarnings }
+    return { formatAmountSold, formatAdminEarnings }
 }
 
 /*=============================
@@ -972,38 +974,36 @@ function calculateTotalAmountAndAdminEarnings(events) {
 async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
     try {
         const events = await Event.find({ isActive: true });
-
+        const refundOrders = await RefundOrder.find({ refunded: true });
 
         const totalAmount = calculateTotalAmountAndAdminEarnings(events);
-
+        const totalRefund = calculateTotalMoneyRefunded(refundOrders);
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
             message: 'success',
-            data: totalAmount
+            totalAmount,
+            totalRefund
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
 }
 
-async function calculateTotalMoneyRefunded() {
-    try {
-        const refundOrders = await RefundOrder.find({ refunded: true });
+function calculateTotalMoneyRefunded(refundOrders) {
+    let totalMoneyRefunded = 0;
+    let ActualFare = 0;
 
-        let totalMoneyRefunded = 0;
-        let ActualFare = 0;
-
-        refundOrders.forEach(refundOrder => {
-            totalMoneyRefunded += refundOrder.money_refund;
-            ActualFare = (refundOrder.money_refund * 1000) / 70
-        });
-
-        console.log(`Total Money Refunded: ${totalMoneyRefunded}`);
-        console.log(`percentage Of Payment: ${ActualFare}`);
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred' });
-    }
+    refundOrders.forEach(refundOrder => {
+        totalMoneyRefunded += refundOrder.money_refund;
+        formatMoneyRefund = formatMoney(totalMoneyRefunded);
+        ActualFare = (totalMoneyRefunded * 100) / 70;
+        AdminEarRefund = formatMoney((ActualFare * 15) / 100);
+    });
+    console.log(`Total Money Refunded: ${totalMoneyRefunded}`);
+    console.log(`percentage Of Payment: ${ActualFare}`);
+    console.log(`AdminEarRefund: ${AdminEarRefund}`);
+    return { formatMoneyRefund, AdminEarRefund }
 }
 
 function formatMoney(amount) {

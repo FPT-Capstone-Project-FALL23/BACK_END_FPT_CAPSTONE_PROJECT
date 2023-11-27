@@ -151,6 +151,15 @@ async function registerUser(req, res) {
             password: hashedPassword,
             role: role,
         });
+        const client = await Client.create({
+            user_id: user._id,
+            full_name: null,
+            phone: null,
+            birthday: null,
+            gender: null,
+            avatarImage: process.env.IMG_AVATAR,
+            favorit_enres: null,
+        });
         //Nhà tổ chức thì không cần token, đợi admin accept
         if (role == "organizer") {
             return res.status(200).json({
@@ -164,6 +173,7 @@ async function registerUser(req, res) {
         res.status(200).json({
             status: true,
             data: user,
+            client,
             token: token,
             message: `Người dùng với ${role} đã kí thành công`,
         });
