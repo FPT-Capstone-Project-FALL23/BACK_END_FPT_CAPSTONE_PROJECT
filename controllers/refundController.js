@@ -4,6 +4,7 @@ const Order = require('../model/orderModel');
 const RefundOrder = require('../model/refundOrderModel');
 const Organizer = require('../model/organizersModels');
 const { returnZaloMoney } = require('../zalopay/payment');
+const { getMailOfClient, formatMoney } = require('./adminControler');
 
 
 async function createRefund(req, res) {
@@ -150,13 +151,38 @@ async function acceptRefund(req, res) {
 async function listIsRefund(req, res) {
     try {
         const listRefund = await RefundOrder.find({ isRefund: true, refunded: false });
+        const totalRefundAmount = listRefund.reduce((sum, refund) => sum + refund.money_refund, 0);
+        const countRefund = listRefund.length;
         if (!listRefund) {
             return res.status(400).json({
                 status: false,
                 message: 'Dont have any Refund Order',
             });
         }
-        res.status(200).json({ status: true, listRefund });
+
+        const fomatInfoRefund = await Promise.all(listRefund.map(async (refund) => {
+            const client = await getMailOfClient(refund.client_id)
+            return {
+                refund_date: refund.refund_date.toISOString().split('T')[0],
+                zp_trans_id: refund.zp_trans_id,
+                event_name: refund.event_name,
+                money_refund: formatMoney(refund.money_refund),
+                client_name: client.fomatInfoClient.full_name,
+                client_email: client.fomatInfoClient.email,
+                numberOfTickets: refund.tickets.length,
+                _id: refund._id,
+            }
+        }))
+
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: {
+                totalRefundAmount: formatMoney(totalRefundAmount),
+                count: countRefund,
+                refunds: fomatInfoRefund
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });

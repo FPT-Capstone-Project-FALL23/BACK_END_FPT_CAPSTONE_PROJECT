@@ -255,7 +255,7 @@ async function setIsActiveOrganizer(req, res) {
 }
 async function sendEmailActiveOrganizer(email) {
     const mailOptions = {
-        from: AUTH_EMAIL, 
+        from: AUTH_EMAIL,
         to: email,
         subject: 'TIKSEAT: ACCOUNT HAS BEEN ACTIVATED',
         html:
@@ -1006,6 +1006,12 @@ async function calculateTotalMoneyRefunded() {
     }
 }
 
+/*=============================
+## Name function: formatMoney
+## Describe: chuyển số thành tiền (Vd:10000 => 10,000)
+## Params: amount
+## Result: formattedAmount
+===============================*/
 function formatMoney(amount) {
     const formattedAmount = amount.toLocaleString();
     return formattedAmount;
@@ -1025,6 +1031,7 @@ async function getAllOrders(req, res) {
 
 
         const formattedOrders = await Promise.all(orders.map(async (order) => {
+            const client = await getMailOfClient(order.client_id)
             return {
                 totalAmount: formatMoney(order.totalAmount),
                 event_date: order.event_date.toISOString().split('T')[0],
@@ -1032,7 +1039,8 @@ async function getAllOrders(req, res) {
                 event_name: order.event_name,
                 zp_trans_id: order.zp_trans_id,
                 numberOfTickets: order.tickets.length,
-                client: await getMailOfClient(order.client_id),
+                client_name: client.fomatInfoClient.full_name,
+                client_email: client.fomatInfoClient.email
             }
         }));
 
@@ -1051,6 +1059,12 @@ async function getAllOrders(req, res) {
     }
 }
 
+/*=============================
+## Name function: getMailOfClient
+## Describe: lấy name và email
+## Params: user_id
+## Result: fomatInfoClient
+===============================*/
 async function getMailOfClient(user_id) {
     const client = await Client.findById(user_id);
     const user = await User.findById(client.user_id);
@@ -1074,5 +1088,7 @@ module.exports = {
     getDetailEventActiveIsFalse,
     getTotalAmountSoldAllEventAndAdminEarnings,
     calculateTotalMoneyRefunded,
-    getAllOrders
+    getAllOrders,
+    getMailOfClient,
+    formatMoney
 }
