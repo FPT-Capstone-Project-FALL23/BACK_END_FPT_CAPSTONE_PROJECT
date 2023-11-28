@@ -92,7 +92,7 @@ async function getListRefund(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const refund = await RefundOrder.find({ organizer_id: _idOrganizer })
-            .sort({ isRefund: 1, refund_date: -1 });
+            .sort({ isRefund: 1, refunded: 1, refund_date: -1 });
         if (!refund) {
             return res.status(400).json({
                 status: false,

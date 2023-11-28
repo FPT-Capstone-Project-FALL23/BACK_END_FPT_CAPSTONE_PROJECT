@@ -428,19 +428,21 @@ function getEventStatus(event) {
 function calculateTotalRevenue(event) {
     let totalRevenue = 0;
 
-    // Lặp qua tất cả khu vực (areas)
-    event.event_date[0].event_areas.forEach((area) => {
-        // Lặp qua tất cả dãy ghế (rows) trong khu vực
-        area.rows.forEach((row) => {
-            // Lặp qua tất cả các ghế (chairs) trong dãy ghế
-            row.chairs.forEach((chair) => {
-                if (chair.isBuy) {
-                    totalRevenue += row.ticket_price;
-                }
+    // Lặp qua tất cả các ngày sự kiện
+    event.event_date.forEach((date) => {
+        // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+        date.event_areas.forEach((area) => {
+            // Lặp qua tất cả dãy ghế (rows) trong khu vực
+            area.rows.forEach((row) => {
+                // Lặp qua tất cả các ghế (chairs) trong dãy ghế
+                row.chairs.forEach((chair) => {
+                    if (chair.isBuy) {
+                        totalRevenue += row.ticket_price;
+                    }
+                });
             });
         });
     });
-
     return totalRevenue;
 }
 
@@ -448,7 +450,7 @@ async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 6; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
@@ -464,12 +466,16 @@ async function listEventOrganizer(req, res) {
         // Lặp qua danh sách sự kiện và trích xuất thông tin
         events.forEach((event) => {
             const eventStatus = getEventStatus(event);
+            //tính tiền thực tế
             const totalRevenue = calculateTotalRevenue(event);
             // Tính toán số tiền dự kiến
             let totalMoney = 0;
-            event.event_date[0].event_areas.forEach((area) => {
-                area.rows.forEach((row) => {
-                    totalMoney += row.total_chair * row.ticket_price;
+            event.event_date.forEach((date) => {
+                // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+                date.event_areas.forEach((area) => {
+                    area.rows.forEach((row) => {
+                        totalMoney += row.total_chair * row.ticket_price;
+                    });
                 });
             });
             // Thêm thông tin sự kiện và trạng thái vào danh sách kết quả
@@ -488,7 +494,6 @@ async function listEventOrganizer(req, res) {
             const sort = { "HAPPENNING": 1, "UPCOMING": 2, "FINISHED": 3 };
             return sort[a.eventStatus] - sort[b.eventStatus];
         });
-        
         res.status(200).json({
             status: true,
             data: sortedEvents,
@@ -519,9 +524,12 @@ async function statisticalAllEvent(req, res) {
         events.forEach((event) => {
             totalRevenue = calculateTotalRevenue(event);
             // Tính toán số tiền dự kiến
-            event.event_date[0].event_areas.forEach((area) => {
-                area.rows.forEach((row) => {
-                    totalMoney += row.total_chair * row.ticket_price;
+            event.event_date.forEach((date) => {
+                // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+                date.event_areas.forEach((area) => {
+                    area.rows.forEach((row) => {
+                        totalMoney += row.total_chair * row.ticket_price;
+                    });
                 });
             });
             event.event_date.forEach((day) => {
@@ -578,9 +586,13 @@ async function statisticalOneEvent(req, res) {
         const totalRevenue = calculateTotalRevenue(event);
         // Tính toán số tiền dự kiến
         let totalMoney = 0;
-        event.event_date[0].event_areas.forEach((area) => {
-            area.rows.forEach((row) => {
-                totalMoney += row.total_chair * row.ticket_price;
+        // Lặp qua tất cả các ngày sự kiện
+        event.event_date.forEach((date) => {
+            // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+            date.event_areas.forEach((area) => {
+                area.rows.forEach((row) => {
+                    totalMoney += row.total_chair * row.ticket_price;
+                });
             });
         });
         event.event_date.forEach((day) => {
@@ -617,33 +629,33 @@ async function statisticalOneEvent(req, res) {
 
 async function getEventRating(req, res) {
     try {
-      const { eventId } = req.body;
-  
-      const event = await Event.findById(eventId).populate('ratings');
-  
-      if (!event) {
-        return res.status(404).json({ msg: 'Sự kiện không tìm thấy' });
-      }
+        const { eventId } = req.body;
 
-      const responseData = {
-        totalRating: event.totalRating,
-        ratings: event.ratings.map(rating => ({
-            _id: rating._id,
-            star: rating.star 
-          }))  
-      };
-  
-      console.log(`Found event with total rating: ${event.totalRating}`);
-      res.json(responseData);
-  
+        const event = await Event.findById(eventId).populate('ratings');
+
+        if (!event) {
+            return res.status(404).json({ msg: 'Sự kiện không tìm thấy' });
+        }
+
+        const responseData = {
+            totalRating: event.totalRating,
+            ratings: event.ratings.map(rating => ({
+                _id: rating._id,
+                star: rating.star
+            }))
+        };
+
+        console.log(`Found event with total rating: ${event.totalRating}`);
+        res.json(responseData);
+
     } catch (err) {
-  
-      console.error(err);
-      res.status(500).send('Lỗi máy chủ');
-  
+
+        console.error(err);
+        res.status(500).send('Lỗi máy chủ');
+
     }
-  }
-  
+}
+
 
 
 module.exports = {
