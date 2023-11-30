@@ -72,14 +72,28 @@ async function verifyUserCredentials(email, password) {
     if (!user) {
         return {
             status: false,
-            message: 'Người dùng không tìm thấy'
+            message: 'Email or Password is incorrect'
+        };
+    }
+    if (user.isBlocked == true) {
+        return {
+            status: false,
+            message: 'Your account has been locked'
         };
     }
     const passwordMatch = await bcrypt.compare(password, user.password); //Kiển tra password có đúng không
     if (!passwordMatch) {
         return {
             status: false,
-            message: 'Mật khẩu không đúng'
+            message: 'Email or Password is incorrect'
+        };
+    }
+    const _idUser = user._id;
+    const organizer = await Organizer.findOne({ user_id: _idUser, isActive: true });
+    if (!organizer) {
+        return {
+            status: false,
+            message: 'The Organizer is not active'
         };
     }
     return {

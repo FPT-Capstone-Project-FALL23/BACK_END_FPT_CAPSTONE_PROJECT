@@ -11,6 +11,7 @@ const { getAllClients,
     getTotalAmountSoldAllEventAndAdminEarnings,
     calculateTotalMoneyRefunded,
     getAllOrders,
+    blockedUser,
 } = require("../controllers/adminControler");
 
 const adminRouter = require("express").Router();
@@ -28,6 +29,7 @@ adminRouter.post("/getDetailEventActiveIsFalse", getDetailEventActiveIsFalse)
 adminRouter.get("/getTotalAmountSoldAllEventAndAdminEarnings", getTotalAmountSoldAllEventAndAdminEarnings)
 adminRouter.get("/calculateTotalMoneyRefunded", calculateTotalMoneyRefunded)
 adminRouter.get("/getAllOrders", getAllOrders)
+adminRouter.post("/blockedUser", blockedUser)
 
 
 module.exports = adminRouter
