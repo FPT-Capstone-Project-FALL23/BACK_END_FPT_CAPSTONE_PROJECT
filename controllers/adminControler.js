@@ -73,7 +73,7 @@ async function blockedUser(req, res) {
             { $set: { isBlocked: true } },
             { new: true }
         );
-        user.isBlock = !user.isBlock;
+        user.isBlocked = !user.isBlocked;
         res.status(200).json({
             status: true,
             message: 'success',
