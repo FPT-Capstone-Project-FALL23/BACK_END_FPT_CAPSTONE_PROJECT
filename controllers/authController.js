@@ -88,14 +88,18 @@ async function verifyUserCredentials(email, password) {
             message: 'Email or Password is incorrect'
         };
     }
-    const _idUser = user._id;
-    const organizer = await Organizer.findOne({ user_id: _idUser, isActive: true });
-    if (!organizer) {
-        return {
-            status: false,
-            message: 'The Organizer is not active'
-        };
+    const roleUser = user.role;
+    if (roleUser === 'organizer') {
+        const _idUser = user._id;
+        const organizer = await Organizer.findOne({ user_id: _idUser, isActive: true });
+        if (!organizer) {
+            return {
+                status: false,
+                message: 'The Organizer is not active'
+            };
+        }
     }
+
     return {
         status: true,
         message: 'Tìm thấy người dùng',
