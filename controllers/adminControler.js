@@ -952,7 +952,7 @@ async function getDetailEventActiveIsFalse(req, res) {
 ## Name function: calculateTotalAmountAndAdminEarnings
 ## Describe: tính tổng tiền đã bán và đaonh thủ của Admin
 ## Params: events
-## Result: totalAmountSold
+## Result: formatAmountSold, formatAdminEarnings
 ===============================*/
 function calculateTotalAmountAndAdminEarnings(events) {
 
@@ -971,8 +971,6 @@ function calculateTotalAmountAndAdminEarnings(events) {
                             //quản trị viên kiếm được 1% giá vé cho mỗi ghế được bán
                             adminEarnings += onePercentSeatsSold;
                             formatAdminEarnings = formatMoney(adminEarnings);
-                            console.log(`Admin Earnings from 1% Seats Sold: ${adminEarnings}`);
-                            console.log(`Total Amount Sold: ${totalAmountSold}`);
                         }
                     });
                 });
@@ -990,23 +988,38 @@ function calculateTotalAmountAndAdminEarnings(events) {
 ===============================*/
 async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
     try {
+        const { startDate, endDate } = req.body;
         const events = await Event.find({ isActive: true });
         const refundOrders = await RefundOrder.find({ refunded: true });
 
         const totalAmount = calculateTotalAmountAndAdminEarnings(events);
         const totalRefund = calculateTotalMoneyRefunded(refundOrders);
+        const calculateDaily = await calculateDailyStats(startDate, endDate);
+
+        const fomatData = {
+            totalAmountSold: totalAmount.formatAmountSold,
+            totalAdminEarnings: totalAmount.formatAdminEarnings,
+            totalMoneyRefund: totalRefund.formatMoneyRefund,
+            totalAdminEarRefund: totalRefund.adminEarRefund,
+            calculateDailyStats: calculateDaily
+        }
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
             message: 'success',
-            totalAmount,
-            totalRefund
+            data: fomatData
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
 }
 
+/*=============================
+## Name function: calculateTotalMoneyRefunded
+## Describe: tính tổng số tiền được hoàn lại
+## Params: refundOrders
+## Result: formatMoneyRefund, adminEarRefund
+===============================*/
 function calculateTotalMoneyRefunded(refundOrders) {
     let totalMoneyRefunded = 0;
     let ActualFare = 0;
@@ -1015,12 +1028,37 @@ function calculateTotalMoneyRefunded(refundOrders) {
         totalMoneyRefunded += refundOrder.money_refund;
         formatMoneyRefund = formatMoney(totalMoneyRefunded);
         ActualFare = (totalMoneyRefunded * 100) / 70;
-        AdminEarRefund = formatMoney((ActualFare * 15) / 100);
+        adminEarRefund = formatMoney((ActualFare * 15) / 100);
     });
-    console.log(`Total Money Refunded: ${totalMoneyRefunded}`);
-    console.log(`percentage Of Payment: ${ActualFare}`);
-    console.log(`AdminEarRefund: ${AdminEarRefund}`);
-    return { formatMoneyRefund, AdminEarRefund }
+    return { formatMoneyRefund, adminEarRefund }
+}
+
+
+async function calculateDailyStats(startDate, endDate) {
+    const orders = await Order.find({
+        transaction_date: {
+            $gte: new Date(startDate),
+            $lt: new Date(endDate)
+        }
+    }, 'transaction_date totalAmount');
+
+    const dailyStats = {};
+
+    orders.forEach((order) => {
+        const date = order.transaction_date.toISOString().split('T')[0];
+
+        if (!dailyStats[date]) {
+            dailyStats[date] = {
+                totalAmount: 0,
+                transactionCount: 0
+            };
+        }
+
+        dailyStats[date].totalAmount += order.totalAmount;
+        dailyStats[date].transactionCount += 1;
+    });
+
+    return dailyStats;
 }
 
 /*=============================
