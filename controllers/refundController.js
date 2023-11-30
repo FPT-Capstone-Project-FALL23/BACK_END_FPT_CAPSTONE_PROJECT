@@ -91,15 +91,22 @@ async function createRefund(req, res) {
 async function getListRefund(req, res) {
     try {
         const { _idOrganizer } = req.body;
+        const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
+        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
+        const totalEvents = await RefundOrder.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
+        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
         const refund = await RefundOrder.find({ organizer_id: _idOrganizer })
-            .sort({ isRefund: 1, refunded: 1, refund_date: -1 });
+            .sort({ isRefund: 1, refunded: 1, refund_date: -1 })
+            .skip(skip)
+            .limit(limit);;
         if (!refund) {
             return res.status(400).json({
                 status: false,
                 message: 'Refund order not found',
             });
         }
-        res.status(200).json({ status: true, refund });
+        res.status(200).json({ status: true, refund, totalPages });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });

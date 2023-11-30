@@ -1,5 +1,7 @@
 const Organizer = require('../model/organizersModels');
 const Event = require('../model/eventModels');
+const Order = require('../model/orderModel');
+const mongoose = require("mongoose");
 const { upLoadImg } = require("../controllers/authController");
 const unorm = require('unorm');
 
@@ -450,7 +452,7 @@ async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 6; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 8; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
@@ -627,6 +629,65 @@ async function statisticalOneEvent(req, res) {
     }
 }
 
+function getListOfDays(start, end) {
+    const listOfDays = [];
+    let currentDay = new Date(start);
+
+    while (currentDay <= end) {
+        listOfDays.push(new Date(currentDay));
+        currentDay.setDate(currentDay.getDate() + 1);
+    }
+
+    return listOfDays;
+}
+//thống kê tiền theo ngày bán của sự kiện
+async function statisticalMoneyEvent(req, res) {
+    try {
+        const { _idEvent } = req.body;
+
+        // Lấy thông tin về start sale date và end sale date từ sự kiện
+        const event = await Event.findById(_idEvent).select('sales_date');
+
+        if (!event) {
+            return res.status(404).json({ status: false, message: 'Event not found.' });
+        }
+        const { start_sales_date, end_sales_date } = event.sales_date;
+        // Lấy danh sách các ngày trong khoảng thời gian
+        const listOfDays = getListOfDays(new Date(start_sales_date), new Date(end_sales_date));
+
+        // Thực hiện aggregation để thống kê tiền theo ngày
+        const result = await Order.aggregate([
+            {
+                $match: {
+                    event_id: new mongoose.Types.ObjectId(_idEvent),
+                    transaction_date: { $gte: start_sales_date, $lte: end_sales_date },
+                },
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$transaction_date' } },
+                    totalAmount: { $sum: '$totalAmount' },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+        ]);
+        // Map kết quả aggregation vào danh sách các ngày và điền giá trị 0 cho những ngày không có order
+        const finalResult = listOfDays.map((day) => {
+            const matchingResult = result.find((item) => item._id === day.toISOString().split('T')[0]);
+            return {
+                date: day.toISOString().split('T')[0],
+                totalAmount: matchingResult ? matchingResult.totalAmount : 0,
+            };
+        });
+        res.status(200).json({ status: true, data: finalResult });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
 async function getEventRating(req, res) {
     try {
         const { eventId } = req.body;
@@ -669,5 +730,6 @@ module.exports = {
     listEventOrganizer,
     statisticalAllEvent,
     statisticalOneEvent,
-    getEventRating
+    getEventRating,
+    statisticalMoneyEvent
 };

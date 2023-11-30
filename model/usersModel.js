@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['client', 'organizer', 'admin'], required: true },
+    isBlocked: { type: Boolean, default: false },
 });
 
 // Create the User model

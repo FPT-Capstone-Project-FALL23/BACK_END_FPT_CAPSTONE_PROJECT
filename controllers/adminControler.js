@@ -57,6 +57,21 @@ async function getAllClients(req, res) {
     }
 }
 
+async function blockedUser(req, res) {
+    try {
+        const { _idUser } = req.body;
+        const user = await User.findOneAndUpdate({ _id: _idUser }, { isBlocked: true }, { new: true });
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: user
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
 /*=============================
 ## Name function: calculateAge
 ## Describe: Hàm tính tuổi dựa trên ngày sinh
@@ -1025,7 +1040,8 @@ function formatMoney(amount) {
 ===============================*/
 async function getAllOrders(req, res) {
     try {
-        const orders = await Order.find();
+        const orders = await Order.find()
+            .sort({ transaction_date: -1 });
         const totalTransactionAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
         const count = orders.length;
 
@@ -1090,5 +1106,6 @@ module.exports = {
     calculateTotalMoneyRefunded,
     getAllOrders,
     getMailOfClient,
-    formatMoney
+    formatMoney,
+    blockedUser
 }
