@@ -46,6 +46,7 @@ async function getAllClients(req, res) {
             phone: client.additionalInfo?.phone,
             age: calculateAge(client.additionalInfo?.birthday),
             gender: client.additionalInfo?.gender,
+            avatarImage: client.additionalInfo?.avatarImage
         }));
         // Xử lý khi thành công
         res.status(200).json({
@@ -58,10 +59,21 @@ async function getAllClients(req, res) {
     }
 }
 
+/*=============================
+## Name function: blockedUser
+## Describe: Block user
+## Params: _idUser
+## Result: status, message, data
+===============================*/
 async function blockedUser(req, res) {
     try {
         const { _idUser } = req.body;
-        const user = await User.findOneAndUpdate({ _id: _idUser }, { isBlocked: true }, { new: true });
+        const user = await User.findOneAndUpdate(
+            { _id: _idUser },
+            { $set: { isBlocked: true } },
+            { new: true }
+        );
+        user.isBlock = !user.isBlock;
         res.status(200).json({
             status: true,
             message: 'success',
@@ -177,6 +189,7 @@ async function getAllOrganizers(req, res) {
             founded_date: formatDate(organizer.additionalInfo?.founded_date),
             website: organizer.additionalInfo?.website,
             isActive: organizer.additionalInfo?.isActive,
+            avatarImage: organizer.additionalInfo?.avatarImage
         }));
 
         // Handle success
