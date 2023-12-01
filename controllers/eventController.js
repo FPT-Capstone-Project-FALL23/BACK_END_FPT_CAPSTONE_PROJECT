@@ -121,10 +121,18 @@ async function createEvent(req, res) {
             isActive: isActive,
             isHot: isHot
         });
-
+        //create order default
+        const order = await Order.create({
+            event_id: event._id,
+            event_name: event_name,
+            event_date: null,
+            event_location: null,
+            Orders: [],
+        })
         res.status(200).json({
             status: true,
             data: event,
+            order,
             message: `Event tạo thành công`,
         });
     }
@@ -452,7 +460,7 @@ async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 8; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
@@ -628,6 +636,70 @@ async function statisticalOneEvent(req, res) {
         res.status(500).json({ status: false, message: error.message });
     }
 }
+function getListOfMonths(start, end) {
+    const listOfMonths = [];
+    let currentMonth = new Date(start);
+
+    while (currentMonth <= end) {
+        listOfMonths.push(new Date(currentMonth));
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+
+    return listOfMonths;
+}
+//thống kê tiền theo tháng của organizer
+async function statisticalMoneyOrganizer(req, res) {
+    try {
+        const { _idOrganizer, year } = req.body;
+        // Lấy thông tin về các sự kiện của nhà tổ chức trong năm
+        const events = await Event.find({
+            organizer_id: new mongoose.Types.ObjectId(_idOrganizer),
+            'sales_date.start_sales_date': { $gte: new Date(`${year}-01-01`) },
+            'sales_date.end_sales_date': { $lte: new Date(`${year}-12-31`) },
+        }).select('_id');
+
+        if (!events || events.length === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'No events found for the organizer in the current year.'
+            });
+        }
+
+        const eventIds = events.map((event) => event._id);
+
+        // Thực hiện aggregation để thống kê tiền theo tháng
+        const result = await Order.aggregate([
+            {
+                $match: {
+                    event_id: { $in: eventIds },
+                },
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m', date: '$transaction_date' } },
+                    totalAmount: { $sum: '$totalAmount' },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+        ]);
+        // Lấy danh sách các tháng trong năm
+        const listOfMonths = getListOfMonths(new Date(`${year}-01-01`), new Date(`${year}-12-31`));
+        // Map kết quả aggregation vào danh sách các tháng và điền giá trị 0 cho những tháng không có order
+        const finalResult = listOfMonths.map((month) => {
+            const matchingResult = result.find((item) => item._id === month.toISOString().split('T')[0].slice(0, 7));
+            return {
+                month: month.toISOString().split('T')[0].slice(5, 7),
+                totalAmount: matchingResult ? matchingResult.totalAmount : 0,
+            };
+        });
+        res.status(200).json({ status: true, data: finalResult });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
 
 function getListOfDays(start, end) {
     const listOfDays = [];
@@ -649,7 +721,7 @@ async function statisticalMoneyEvent(req, res) {
         const event = await Event.findById(_idEvent).select('sales_date');
 
         if (!event) {
-            return res.status(404).json({ status: false, message: 'Event not found.' });
+            return res.status(400).json({ status: false, message: 'Event not found.' });
         }
         const { start_sales_date, end_sales_date } = event.sales_date;
         // Lấy danh sách các ngày trong khoảng thời gian
@@ -731,5 +803,6 @@ module.exports = {
     statisticalAllEvent,
     statisticalOneEvent,
     getEventRating,
+    statisticalMoneyOrganizer,
     statisticalMoneyEvent
 };

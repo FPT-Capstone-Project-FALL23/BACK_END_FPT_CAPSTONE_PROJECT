@@ -93,9 +93,16 @@ async function getOrdersByClient(req, res) {
                 message: 'Client không tồn tại',
             });
         }
-        const orders = await Order.find({ client_id: _idClient })
-            .sort({ transaction_date: -1 });
-        res.status(200).json({ orders });
+        const orders = await Order.find({ 'Orders.client_id': _idClient })
+            .sort({ 'Orders.transaction_date': -1 })
+            .populate({
+                path: 'Orders',
+                match: { 'client_id': _idClient },
+                populate: {
+                    path: 'tickets',
+                },
+            });
+        res.status(200).json({ status: true, data: orders });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

@@ -49,7 +49,7 @@ const eventSchema = new mongoose.Schema({
     require: true,
   },
   event_name: { type: String },
-  type_of_event: { type: String },
+  type_of_event: [{ type: String }],
   eventImage: { type: String },
   type_layout: { type: String },
   maxTicketInOrder: { type: Number },
@@ -80,9 +80,10 @@ const eventSchema = new mongoose.Schema({
     default: false,
   },
   create_date: { type: Date, default: Date.now },
-  ratings: [{ 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Rating' }],
+  ratings: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rating'
+  }],
   totalRating: {
     type: Number,
     default: 0,

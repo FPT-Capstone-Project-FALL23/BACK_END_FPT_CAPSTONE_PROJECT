@@ -2,6 +2,7 @@ const { getAllClients,
     getDetailClient,
     getAllOrganizers,
     getDetailOrganizer,
+    getAllOrganizerBlockeds,
     setIsActiveOrganizer,
     setIsActiveEvent,
     setIsHotEvent,
@@ -19,6 +20,7 @@ const adminRouter = require("express").Router();
 adminRouter.get("/getAllClient", getAllClients)
 adminRouter.post("/getDetailClient", getDetailClient)
 adminRouter.get("/getAllOrganizers", getAllOrganizers)
+adminRouter.get("/getAllOrganizerBlockeds", getAllOrganizerBlockeds)
 adminRouter.get("/getAllOrganizersIsAtivecFalse", getAllOrganizersIsActiveFalse)
 adminRouter.get("/getAllEventIsAtivecFalse", getAllEventIsActiveFalse)
 adminRouter.post("/getDetailOrganizer", getDetailOrganizer)
