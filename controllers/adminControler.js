@@ -1,11 +1,10 @@
-const { htmlMailActiveEvent, htmlMailActiveOrganizer } = require("../config/constHTML");
+const { sendEmailActiveOrganizer, sendEmailActiveEvent } = require("../controllers/emailController");
 const Client = require("../model/clientsModel");
 const Event = require("../model/eventModels");
 const Order = require("../model/orderModel");
 const Organizer = require("../model/organizersModels");
 const RefundOrder = require("../model/refundOrderModel");
 const User = require("../model/usersModel");
-const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
 
 /*=============================
 ## Name function: getAllClients
@@ -67,13 +66,13 @@ async function getAllClients(req, res) {
 ===============================*/
 async function blockedUser(req, res) {
     try {
-        const { _idUser } = req.body;
+        const { _idUser, isBlocked } = req.body;
         const user = await User.findOneAndUpdate(
             { _id: _idUser },
-            { $set: { isBlocked: true } },
+            { $set: { isBlocked: !isBlocked } },
             { new: true }
         );
-        user.isBlocked = !user.isBlocked;
+        //user.isBlocked = !user.isBlocked;
         res.status(200).json({
             status: true,
             message: 'success',
@@ -165,7 +164,7 @@ async function getAllOrganizers(req, res) {
 
         const organizersIds = organizersInfo.map(organizer => organizer.user_id);
 
-        const organizers = await User.find({ _id: { $in: organizersIds } }, 'email').exec();
+        const organizers = await User.find({ _id: { $in: organizersIds }, isBlocked: false }).exec();
 
         if (!organizers || organizers.length === 0) {
             return res.status(404).json({ message: 'No active organizers found' });
@@ -176,6 +175,7 @@ async function getAllOrganizers(req, res) {
             const userInfo = organizersInfo.find(info => info.user_id.equals(organizer._id));
             organizerData._id = organizer._id;
             organizerData.email = organizer.email;
+            organizerData.isBlocked = organizer.isBlocked;
             organizerData.additionalInfo = userInfo;
             return organizerData;
         });
@@ -189,6 +189,7 @@ async function getAllOrganizers(req, res) {
             founded_date: formatDate(organizer.additionalInfo?.founded_date),
             website: organizer.additionalInfo?.website,
             isActive: organizer.additionalInfo?.isActive,
+            isBlocked: organizer.isBlocked,
             avatarImage: organizer.additionalInfo?.avatarImage
         }));
 
@@ -284,22 +285,62 @@ async function setIsActiveOrganizer(req, res) {
 }
 
 /*=============================
-## Name function: sendEmailActiveOrganizer
-## Describe: Gửi mail cho tổ chức khi phê duyệt
-## Params: email
-## Result: none
+## Name function: getAllOrganizerBlockeds
+## Describe: Lấy thông tin của Organizer bị blocked
+## Params: none
+## Result: status, message, data
 ===============================*/
-async function sendEmailActiveOrganizer(email) {
-    const htmlActive = htmlMailActiveOrganizer(email)
-    const mailOptions = {
-        from: AUTH_EMAIL,
-        to: email,
-        subject: 'TIKSEAT: ACCOUNT HAS BEEN ACTIVATED',
-        html: htmlActive,
-    };
-    // Gửi email
-    sendMailToUser(mailOptions)
+async function getAllOrganizerBlockeds(req, res) {
+    try {
+        const organizersInfo = await Organizer.find({ isActive: true }).exec();
+
+        if (!organizersInfo || organizersInfo.length === 0) {
+            return res.status(404).json({ message: 'No active organizers found' });
+        }
+
+        const organizersIds = organizersInfo.map(organizer => organizer.user_id);
+
+        const organizers = await User.find({ _id: { $in: organizersIds }, isBlocked: true }).exec();
+
+        if (!organizers || organizers.length === 0) {
+            return res.status(404).json({ message: 'No active organizers found' });
+        }
+
+        const organizersWithInfo = organizers.map(organizer => {
+            const organizerData = {};
+            const userInfo = organizersInfo.find(info => info.user_id.equals(organizer._id));
+            organizerData._id = organizer._id;
+            organizerData.email = organizer.email;
+            organizerData.isBlocked = organizer.isBlocked;
+            organizerData.additionalInfo = userInfo;
+            return organizerData;
+        });
+
+        // Format the response
+        const formattedOrganizers = organizersWithInfo.map(organizer => ({
+            _id: organizer._id,
+            email: organizer.email,
+            organizer_name: organizer.additionalInfo?.organizer_name,
+            phone: organizer.additionalInfo?.phone,
+            founded_date: formatDate(organizer.additionalInfo?.founded_date),
+            website: organizer.additionalInfo?.website,
+            isActive: organizer.additionalInfo?.isActive,
+            isBlocked: organizer.isBlocked,
+            avatarImage: organizer.additionalInfo?.avatarImage
+        }));
+
+        // Handle success
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: formattedOrganizers
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
 }
+
 /*=============================
 ## Name function: setIsActiveEvent
 ## Describe: Phê duyệt khi Organizer tạo Event
@@ -345,24 +386,6 @@ async function setIsActiveEvent(req, res) {
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
-}
-
-/*=============================
-## Name function: sendEmailActiveEvent
-## Describe: Gửi mail cho tổ chức khi phê duyệt event
-## Params: email, organizer, event
-## Result: none
-===============================*/
-async function sendEmailActiveEvent(email, organizer, event) {
-    const htmlEmail = htmlMailActiveEvent(organizer, event)
-    const mailOptions = {
-        from: AUTH_EMAIL,
-        to: email,
-        subject: 'TIKSEAT: EVENT HAS BEEN ACTIVATED',
-        html: htmlEmail,
-    };
-    // Gửi email
-    sendMailToUser(mailOptions)
 }
 
 /*=============================
@@ -742,6 +765,7 @@ module.exports = {
     getDetailClient,
     getAllOrganizers,
     getDetailOrganizer,
+    getAllOrganizerBlockeds,
     setIsActiveOrganizer,
     setIsActiveEvent,
     setIsHotEvent,

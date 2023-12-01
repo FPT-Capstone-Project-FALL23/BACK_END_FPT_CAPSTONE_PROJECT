@@ -1,7 +1,7 @@
 const { generateOTP } = require('./otpController');
 const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
 const User = require('../model/usersModel');
-
+const { htmlMailActiveEvent, htmlMailActiveOrganizer, htmlOTP, htmlsendTicketByEmail } = require("../config/constHTML");
 
 // Lưu trữ OTP được tạo và thời gian hết hạn
 const otpStorage = {};
@@ -30,16 +30,12 @@ async function sendOTPForMailRegister(req, res) {
             const expirationTime = generOTP.expirationTime;
 
             otpStorage[email] = { otp, expirationTime }; //Lưu trữ OTP và time để xác thực sau
-
+            const htmlOTPForMail = htmlOTP(otp);
             const mailOptions = {
                 from: AUTH_EMAIL,
                 to: email,
                 subject: 'TIKSEAT: Mã OTP để xác minh tài khoản',
-                html: `<p>Mã xác minh tài khoản Tikseat của bạn là:</p>
-            <p style="color:tomato;font-size:25px;letter-spacing:2px;">
-            <b>${otp}</b>
-            </p>
-            <p>Có hiệu lực trong <b>3 phút.</b>.KHÔNG chia sẻ mã này với người khác</p>`,
+                html: htmlOTPForMail,
             };
 
             sendMailToUser(mailOptions).then(() => {
@@ -75,16 +71,12 @@ async function resendOTPForMail(req, res) {
         const otp = generOTP.otp;
         const resendExpirationTime = generOTP.expirationTime;
         otpStorage[email] = { otp, resendExpirationTime }; //Lưu trữ OTP và time để xác thực sau
-
+        const htmlOTPForMail = htmlOTP(otp);
         const mailOptions = {
             from: AUTH_EMAIL,
             to: email,
             subject: 'TIKSEAT: Mã OTP để xác minh tài khoản',
-            html: `<p>Mã xác minh tài khoản Tikseat của bạn là:</p>
-            <p style="color:tomato;font-size:25px;letter-spacing:2px;">
-            <b>${otp}</b>
-            </p>
-            <p>Có hiệu lực trong <b>3 phút.</b>.KHÔNG chia sẻ mã này với người khác</p>`,
+            html: htmlOTPForMail,
         };
 
         sendMailToUser(mailOptions).then(() => {
@@ -121,16 +113,12 @@ async function sendOTPForResetPassword(req, res) {
             const expirationTime = generOTP.expirationTime;
 
             otpStorage[email] = { otp, expirationTime }; //Lưu trữ OTP và time để xác thực sau
-
+            const htmlOTPForMail = htmlOTP(otp);
             const mailOptions = {
                 from: AUTH_EMAIL,
                 to: email,
                 subject: 'TIKSEAT: Mã OTP để RESET PASSWORD',
-                html: `<p>Mã xác minh tài khoản Tikseat của bạn là:</p>
-            <p style="color:tomato;font-size:25px;letter-spacing:2px;">
-            <b>${otp}</b>
-            </p>
-            <p>Có hiệu lực trong <b>3 phút.</b>.KHÔNG chia sẻ mã này với người khác</p>`,
+                html: htmlOTPForMail,
             };
 
             sendMailToUser(mailOptions).then(() => {
@@ -178,4 +166,67 @@ async function verifileOTPRegister(req, res) {
     }
 }
 
-module.exports = { sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister, resendOTPForMail };
+/*=============================
+## Name function: sendEmailActiveOrganizer
+## Describe: Gửi mail cho tổ chức khi phê duyệt
+## Params: email
+## Result: none
+===============================*/
+async function sendEmailActiveOrganizer(email) {
+    const htmlActive = htmlMailActiveOrganizer(email)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: email,
+        subject: 'TIKSEAT: ACCOUNT HAS BEEN ACTIVATED',
+        html: htmlActive,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
+/*=============================
+## Name function: sendEmailActiveEvent
+## Describe: Gửi mail cho tổ chức khi phê duyệt event
+## Params: email, organizer, event
+## Result: none
+===============================*/
+async function sendEmailActiveEvent(email, organizer, event) {
+    const htmlEmail = htmlMailActiveEvent(organizer, event)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: email,
+        subject: 'TIKSEAT: EVENT HAS BEEN ACTIVATED',
+        html: htmlEmail,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
+/*=============================
+## Name function: sendTicketByEmail
+## Describe: Gửi vé đến email
+## Params: email, client, buffers
+## Result: 
+===============================*/
+async function sendTicketByEmail(email, client, buffers) {
+    // Nội dung email
+    const htmlEmail = htmlsendTicketByEmail(client);
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: email,
+        subject: 'TIKSEAT: MUA VÉ THÀNH CÔNG',
+        html: htmlEmail,
+        attachments: buffers.map((pdf, index) => ({
+            filename: `TIKSEAT_ticket_${index + 1}.pdf`,
+            content: pdf,
+            encoding: 'base64',
+        })),
+    };
+
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+module.exports = {
+    sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister, resendOTPForMail,
+    sendEmailActiveOrganizer, sendEmailActiveEvent, sendTicketByEmail
+};
