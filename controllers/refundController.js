@@ -11,13 +11,25 @@ async function createRefund(req, res) {
     try {
         const { _idOrder, money_refund, zp_trans_id, chairIds } = req.body;
 
-        const order = await Order.findById(_idOrder);
-        if (!order) {
+        const orders = await Order.find({ 'Orders._id': _idOrder }).exec();
+
+        // Lọc chỉ các order có 'client_id' khớp với '_idClient'
+        const orderDetails = orders
+            .map(order => {
+                order.Orders = order.Orders.filter(orderDetail => orderDetail._id.toString() === _idOrder.toString());
+                return order;
+            })
+            .filter(order => order.Orders.length > 0);
+
+        if (orderDetails.length === 0) {
             return res.status(400).json({
                 status: false,
                 message: 'Order does not exist',
             });
         }
+
+        const order = orderDetails[0]; // Lấy order đầu tiên (nếu có nhiều order khớp với _idOrder)
+
         const _idEvent = order.event_id;
         const event = await Event.findById(_idEvent);
         if (!event) {
@@ -26,6 +38,7 @@ async function createRefund(req, res) {
                 message: 'Event does not exist',
             });
         }
+
         const _idOrganizer = event.organizer_id;
         const organizer = await Organizer.findById(_idOrganizer);
         if (!organizer) {
@@ -34,7 +47,8 @@ async function createRefund(req, res) {
                 message: 'Organizer does not exist',
             });
         }
-        const _idClient = order.client_id;
+
+        const _idClient = order.Orders[0].client_id; // Lấy client_id từ order.Orders[0] (nếu có nhiều order)
         const client = await Client.findById(_idClient);
         if (!client) {
             return res.status(400).json({
@@ -42,16 +56,17 @@ async function createRefund(req, res) {
                 message: 'Client does not exist',
             });
         }
+
         let tickets = [];
-        let foundEventArea = null;
-        let foundChair = null;
+
         for (const chairId of chairIds) {
+            let foundEventArea = null;
+            let foundChair = null;
+
             event.event_date.forEach((date) => {
-                //Xác định khu vực sự kiện
-                //Xác định vị trí ghế
                 date.event_areas.forEach((area) => {
                     area.rows.forEach((row) => {
-                        const chair = row.chairs.find((c) => c._id.toString() == chairId);
+                        const chair = row.chairs.find((c) => c._id.toString() === chairId);
                         if (chair) {
                             foundChair = chair;
                             foundEventArea = area.name_areas;
@@ -59,17 +74,23 @@ async function createRefund(req, res) {
                     });
                 });
             });
+
             tickets.push({
                 chair_id: chairId,
                 classTicket: foundEventArea,
                 chairName: foundChair.chair_name
             });
-            const ticket = order.tickets.find(t => t.chair_id.toString() === chairId.toString());
+
+            // Tìm và cập nhật trạng thái hoàn trả cho vé trong order.Orders[0]
+            const ticket = order.Orders[0].tickets.find(t => t.chair_id.toString() === chairId.toString());
             if (ticket) {
                 ticket.isRefund = true;
             }
-            await order.save();
         }
+
+        // Lưu thay đổi vào database
+        await order.save();
+
         const orderRefund = new RefundOrder({
             order_id: _idOrder,
             event_id: _idEvent,
@@ -81,12 +102,14 @@ async function createRefund(req, res) {
             tickets: tickets
         });
         await orderRefund.save();
+
         res.status(200).json({ status: true, message: 'Ticket refund requested' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
     }
 }
+
 
 async function getListRefund(req, res) {
     try {
