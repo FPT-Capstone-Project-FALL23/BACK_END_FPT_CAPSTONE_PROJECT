@@ -760,37 +760,6 @@ async function statisticalMoneyEvent(req, res) {
     }
 }
 
-async function getEventRating(req, res) {
-    try {
-        const { eventId } = req.body;
-
-        const event = await Event.findById(eventId).populate('ratings');
-
-        if (!event) {
-            return res.status(404).json({ msg: 'Sự kiện không tìm thấy' });
-        }
-
-        const responseData = {
-            totalRating: event.totalRating,
-            ratings: event.ratings.map(rating => ({
-                _id: rating._id,
-                star: rating.star
-            }))
-        };
-
-        console.log(`Found event with total rating: ${event.totalRating}`);
-        res.json(responseData);
-
-    } catch (err) {
-
-        console.error(err);
-        res.status(500).send('Lỗi máy chủ');
-
-    }
-}
-
-
-
 module.exports = {
     createEvent,
     getAllEvents,
@@ -802,7 +771,6 @@ module.exports = {
     listEventOrganizer,
     statisticalAllEvent,
     statisticalOneEvent,
-    getEventRating,
     statisticalMoneyOrganizer,
     statisticalMoneyEvent
 };
