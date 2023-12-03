@@ -13,6 +13,7 @@ const { getAllClients,
     calculateTotalMoneyRefunded,
     getAllOrders,
     blockedUser,
+    getAllPayBusiness,
 } = require("../controllers/adminControler");
 
 const adminRouter = require("express").Router();
@@ -32,6 +33,7 @@ adminRouter.post("/getTotalAmountSoldAllEventAndAdminEarnings", getTotalAmountSo
 adminRouter.get("/calculateTotalMoneyRefunded", calculateTotalMoneyRefunded)
 adminRouter.get("/getAllOrders", getAllOrders)
 adminRouter.post("/blockedUser", blockedUser)
+adminRouter.get("/getAllPayBusiness", getAllPayBusiness)
 
 
 module.exports = adminRouter

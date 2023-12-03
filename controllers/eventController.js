@@ -456,6 +456,20 @@ function calculateTotalRevenue(event) {
     return totalRevenue;
 }
 
+// Hàm để tính tổng tiền dựu kiến của một sự kiện
+function calculateExpectedAmount(event) {
+    let totalMoney = 0;
+    event.event_date.forEach((date) => {
+        // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+        date.event_areas.forEach((area) => {
+            area.rows.forEach((row) => {
+                totalMoney += row.total_chair * row.ticket_price;
+            });
+        });
+    });
+    return totalMoney;
+}
+
 async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
@@ -479,22 +493,23 @@ async function listEventOrganizer(req, res) {
             //tính tiền thực tế
             const totalRevenue = calculateTotalRevenue(event);
             // Tính toán số tiền dự kiến
-            let totalMoney = 0;
-            event.event_date.forEach((date) => {
-                // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
-                date.event_areas.forEach((area) => {
-                    area.rows.forEach((row) => {
-                        totalMoney += row.total_chair * row.ticket_price;
-                    });
-                });
-            });
+            const expectedAmount = calculateExpectedAmount(event)
+            // let totalMoney = 0;
+            // event.event_date.forEach((date) => {
+            //     // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+            //     date.event_areas.forEach((area) => {
+            //         area.rows.forEach((row) => {
+            //             totalMoney += row.total_chair * row.ticket_price;
+            //         });
+            //     });
+            // });
             // Thêm thông tin sự kiện và trạng thái vào danh sách kết quả
             eventList.push({
                 _idEvent: event._id,
                 eventName: event.event_name,
                 totalRating: event.totalRating,
                 startDay: event.event_date[0].date,
-                totalEstimated: totalMoney,
+                totalEstimated: expectedAmount,
                 totalActual: totalRevenue,
                 eventStatus: eventStatus,
                 isActive: event.isActive,
@@ -772,5 +787,7 @@ module.exports = {
     statisticalAllEvent,
     statisticalOneEvent,
     statisticalMoneyOrganizer,
-    statisticalMoneyEvent
+    statisticalMoneyEvent,
+    calculateTotalRevenue,
+    calculateExpectedAmount
 };

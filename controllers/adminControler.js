@@ -3,8 +3,10 @@ const Client = require("../model/clientsModel");
 const Event = require("../model/eventModels");
 const Order = require("../model/orderModel");
 const Organizer = require("../model/organizersModels");
+const PayBusiness = require("../model/payBusinessModel");
 const RefundOrder = require("../model/refundOrderModel");
 const User = require("../model/usersModel");
+const { calculateTotalRevenue, calculateExpectedAmount } = require("./eventController");
 
 /*=============================
 ## Name function: getAllClients
@@ -226,6 +228,8 @@ async function getDetailOrganizer(req, res) {
             return res.status(404).json({ message: 'Client information not found for this user' });
         }
 
+        const eventOfOrganizer = await getAllEventOfOrganizer(organizer._id)
+
         // Combine the user and client information
         const detailedOrganizerInfo = {
             user_id: user._id,
@@ -239,6 +243,7 @@ async function getDetailOrganizer(req, res) {
             organizer_type: organizer?.organizer_type,
             isActive: organizer?.isActive,
             website: organizer?.website,
+            event: eventOfOrganizer,
         };
         // Xử lý khi thành công
         res.status(200).json({
@@ -249,6 +254,88 @@ async function getDetailOrganizer(req, res) {
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
+}
+
+/*=============================
+## Name function: getAllEventOfOrganizer
+## Describe: lấy thông tin tất cả event của tổ chức
+## Params: organizerId
+## Result: formatEvent
+===============================*/
+async function getAllEventOfOrganizer(organizerId) {
+    try {
+        const events = await Event.find({ organizer_id: organizerId });
+        if (!events) {
+            return null;
+        }
+        const formatEvent = events.map((event) => ({
+            event_name: event?.event_name,
+            type_of_event: event?.type_of_event,
+            event_location: getAddressString(event?.event_location),
+            start_sales_date: formatDate(event?.sales_date.start_sales_date),
+            end_sales_date: formatDate(event?.sales_date.end_sales_date),
+            type_of_event: event?.type_of_event,
+            maxTicketInOrder: event?.maxTicketInOrder,
+            event_description: event?.event_description,
+            isActive: event?.isActive,
+            isHot: event?.isHot,
+            totalRating: event?.totalRating,
+            eventImage: event?.eventImage,
+            type_layout: event?.type_layout,
+            expectedAmount: calculateExpectedAmount(event),
+            totalRevenue: calculateTotalRevenue(event),
+            event_dates: getEventDateInformation(event),
+        }));
+        return formatEvent;
+    } catch (error) {
+        console.error("Error retrieving events:", error);
+        throw error;
+    }
+}
+
+/*=============================
+## Name function: getEventDateInformation
+## Describe: lấy thông tin của sự kiện
+## Params: event
+## Result: eventDateInformation
+===============================*/
+function getEventDateInformation(event) {
+    const eventDateInformation = event.event_date.map((eventDate) => {
+        const areasInformation = eventDate.event_areas.map((area) => ({
+            name_areas: area.name_areas,
+            total_row: area.total_row,
+            ticket_price: area.ticket_price,
+            rows: area.rows.map((row) => ({
+                row_name: row.row_name,
+                total_chair: row.total_chair,
+                ticket_price: row.ticket_price,
+            })),
+        }));
+
+        const totalSeatsSold = eventDate.event_areas.reduce(
+            (acc, area) =>
+                acc +
+                area.rows.reduce(
+                    (rowAcc, row) =>
+                        rowAcc +
+                        row.chairs.reduce(
+                            (chairAcc, chair) => chairAcc + (chair.isBuy ? 1 : 0),
+                            0
+                        ),
+                    0
+                ),
+            0
+        );
+
+        return {
+            day_number: eventDate.day_number,
+            date: eventDate.date,
+            areas_information: areasInformation,
+            total_seats_sold: totalSeatsSold,
+        };
+    });
+
+    return eventDateInformation;
 }
 
 /*=============================
@@ -273,6 +360,12 @@ async function setIsActiveOrganizer(req, res) {
         }
         const email = user.email;
         await sendEmailActiveOrganizer(email);
+
+        await PayBusiness.create({
+            organizers_id: organizer._id,
+            organizerTotalAmount: 0,
+        })
+
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
@@ -654,11 +747,11 @@ function calculateTotalMoneyRefunded(refundOrders) {
 ===============================*/
 async function calculateDailyStats(startDate, endDate) {
     const orders = await Order.find({
-        transaction_date: {
+        'Orders.transaction_date': {
             $gte: new Date(startDate),
             $lt: new Date(endDate)
         }
-    }, 'transaction_date totalAmount');
+    });
 
     const dailyStats = {};
 
@@ -760,6 +853,63 @@ async function getMailOfClient(user_id) {
     return { fomatInfoClient };
 }
 
+/*=============================
+## Name function: getAllPayBusiness
+## Describe: lấy name và email
+## Params: user_id
+## Result: fomatInfoClient
+===============================*/
+async function getAllPayBusiness() {
+    try {
+        // Find all events
+        const events = await Event.find();
+
+        for (const event of events) {
+            // Iterate over the event_dates
+            for (const eventDate of event.event_date) {
+                // Check if the event_date has passed
+                if (eventDate.date < new Date()) {
+                    let totalAmountSold = 0;
+
+                    // Iterate over the event_areas and calculate the total amount sold
+                    for (const area of eventDate.event_areas) {
+                        for (const row of area.rows) {
+                            for (const chair of row.chairs) {
+                                if (chair.isBuy) {
+                                    totalAmountSold += row.ticket_price;
+                                }
+                            }
+                        }
+                    }
+
+                    // Find the PayBusiness entry for the given event
+                    const payBusiness = await PayBusiness.findOne({ organizers_id: event.organizer_id });
+
+                    // Update the PayBusiness entry with the calculated total amount sold
+                    payBusiness.pay.push({
+                        event_id: event._id,
+                        totalEventAmount: totalAmountSold,
+                        paymentDate: new Date(),
+                        isPay: true
+                    });
+
+                    // Update the organizerTotalAmount field
+                    payBusiness.organizerTotalAmount += totalAmountSold;
+
+                    // Save the updated PayBusiness entry
+                    await payBusiness.save();
+
+                    console.log(`PayBusiness updated for event with ID ${event._id}. Total amount sold: ${totalAmountSold}`);
+                }
+            }
+        }
+
+        console.log('PayBusiness updated for all events successfully.');
+    } catch (error) {
+        console.error('Error updating PayBusiness:', error);
+    }
+}
+
 module.exports = {
     getAllClients,
     getDetailClient,
@@ -778,5 +928,6 @@ module.exports = {
     getMailOfClient,
     formatMoney,
     blockedUser,
-    formatDate
+    formatDate,
+    getAllPayBusiness
 }
