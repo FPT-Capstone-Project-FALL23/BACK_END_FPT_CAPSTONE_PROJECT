@@ -1,98 +1,153 @@
 const Event = require ("../model/eventModels");
 const Rating = require ("../model/ratingModel");
-const User = require("../model/usersModel");
+const Client = require ("../model/clientsModel");
+const mongoose = require('mongoose');
+
 
 async function createRating(req, res) {
-    try {
-      const { eventId, star } = req.body;
-      const { userId } = req.body;
+  try {
+      const { event_id, star, client_id } = req.body;
 
-        // Kiểm tra và validate userId
-        if (!userId) {
-            return res.status(400).json({ message: 'userId is required in the request body' });
-        }
-      const event = await Event.findById(eventId);
-      const user = await User.findById(userId);
-      
-  
-      if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
+      // Kiểm tra xem các trường bắt buộc có được cung cấp không
+      if (!event_id || !star || !client_id) {
+          return res.status(400).json({ error: 'Vui lòng cung cấp event_id, star, và client_id' });
       }
-      const newRating = await Rating.create({
-        event: event._id,
-        user: user._id, 
-        star
-      });
 
-      event.ratings.push(newRating._id);
-      let sumRating = 0;
+      // Giả sử bạn có các mô hình cho 'Event', 'Client', và 'Rating'
+      // Kiểm tra xem Event và Client tham chiếu có tồn tại không
+      const eventExists = await Event.findById(event_id);
+      const clientExists = await Client.findById(client_id);
 
-    
-    for (const ratingId of event.ratings) {
-      const rating = await Rating.findById(ratingId);
-      sumRating += rating.star;
-    }
+      if (!eventExists || !clientExists) {
+          return res.status(404).json({ error: 'Không tìm thấy Event hoặc Client' });
+      }
 
-    let avgRating = sumRating / event.ratings.length;
-    event.totalRating = avgRating;
+      // Tìm bản ghi xếp hạng có sẵn dựa trên event_id
+      const existingRating = await Rating.findOne({ event_id });
 
-      await event.save();
-      
-      const populatedRating = await Rating.findById(newRating._id).populate('user', 'name');
+      if (existingRating) {
+        // Kiểm tra xem client_id đã đánh giá chưa
+        const hasRated = existingRating.user.some(user => user.client_id.equals(client_id));
 
-      res.status(201).json({
-        message: 'Rating created',
-        rating: populatedRating ,
-        
-        
-      });
-    } 
-    catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Server error' });
-    }
+        if (hasRated) {
+            return res.status(400).json({ error: 'Bạn chỉ được đánh giá 1 lần cho 1 sự kiện' });
+        }
+          // Nếu đã có bản ghi xếp hạng, thêm người dùng mới vào mảng user
+          existingRating.user.push({ client_id, star });
+          const updatedRating = await existingRating.save();
+
+          // Tính toán trung bình số sao và cập nhật totalRating
+          const ratings = existingRating.user.map(user => user.star);
+          const averageRating = ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length;
+          eventExists.totalRating = averageRating;
+          await eventExists.save();
+
+          return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, updatedRating });
+      } else {
+          // Nếu không tìm thấy bản ghi xếp hạng, tạo mới với người dùng đầu tiên
+          const newRating = new Rating({
+              event_id,
+              user: [{ client_id, star }]
+          });
+          const savedRating = await newRating.save();
+
+          // Tính toán trung bình số sao và cập nhật totalRating
+          const ratings = newRating.user.map(user => user.star);
+          const averageRating = ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length;
+          eventExists.totalRating = averageRating;
+          await eventExists.save();
+
+          return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, updatedRating });
+      }
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+  }
 }
 
 async function deleteRating(req, res) {
   try {
-    const { ratingId } = req.body;
-    console.log(req.body);
-    const rating = await Rating.findById(ratingId);
+      const { event_id, client_id } = req.body;
 
-    if (!rating) {
-      return res.status(404).json({ msg: 'Rating not found' });
-    }
-    const event = await Event.findById(rating.event);
-    
-    event.ratings.pull(ratingId);
+      // Kiểm tra xem các trường bắt buộc có được cung cấp không
+      if (!event_id || !client_id) {
+          return res.status(400).json({ error: 'Vui lòng cung cấp event_id và client_id' });
+      }
 
-    let sumRating = 0;
+      // Giả sử bạn có các mô hình cho 'Event', 'Client', và 'Rating'
+      // Kiểm tra xem Event và Client tham chiếu có tồn tại không
+      const eventExists = await Event.findById(event_id);
+      const clientExists = await Client.findById(client_id);
 
-    // Sử dụng for...of để có thể sử dụng await
-    for (const ratingId of event.ratings) {
-      const rating = await Rating.findById(ratingId);
-      
-      sumRating += rating.star;
-    }
+      if (!eventExists || !clientExists) {
+          return res.status(404).json({ error: 'Không tìm thấy Event hoặc Client' });
+      }
 
-    let avgRating = 0;
+      // Tìm bản ghi xếp hạng có sẵn dựa trên event_id
+      const existingRating = await Rating.findOne({ event_id });
 
-    if (event.ratings.length > 0) {
-      avgRating = sumRating / event.ratings.length;
-    }
+      if (existingRating) {
+          // Lọc ra người dùng có client_id cần xóa khỏi mảng user
+          existingRating.user = existingRating.user.filter(user => user.client_id.toString() !== client_id);
 
-    event.totalRating = avgRating;
+          // Lưu lại bản ghi xếp hạng sau khi loại bỏ đánh giá của client
+          const updatedRating = await existingRating.save();
 
-    await event.save();
-    console.log('Updated Event:', event);
-    await Rating.deleteOne({ _id: ratingId });
+          // Tính toán lại trung bình số sao và cập nhật totalRating
+          const ratings = existingRating.user.map(user => user.star);
+          const averageRating = ratings.length > 0 ? ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length : 0;
+          eventExists.totalRating = averageRating;
+          await eventExists.save();
 
-    res.json({ msg: 'Rating removed' });
-  } catch (err) {
-    console.error('Error:', err);
-    res.status(500).send('Server error');
+          res.status(200).json({ message: 'Đánh giá đã được xóa thành công', totalRating: eventExists.totalRating });
+      } else {
+          // Nếu không tìm thấy bản ghi xếp hạng, có thể xử lý theo ý của bạn
+          res.status(404).json({ error: 'Không tìm thấy bản ghi xếp hạng cho sự kiện này' });
+      }
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
   }
 }
 
+async function getRating(req, res) {
+  try {
+      const { event_id } = req.body;
 
-module.exports = {createRating, deleteRating };
+      // Kiểm tra xem event_id có được cung cấp không
+      if (!event_id) {
+          return res.status(400).json({ error: 'Vui lòng cung cấp event_id' });
+      }
+
+      // Giả sử bạn có các mô hình cho 'Event' và 'Rating'
+      // Kiểm tra xem Event tham chiếu có tồn tại không
+      const eventExists = await Event.findById(event_id);
+
+      if (!eventExists) {
+          return res.status(404).json({ error: 'Không tìm thấy Event' });
+      }
+
+      // Tìm bản ghi xếp hạng có sẵn dựa trên event_id
+      const existingRating = await Rating.findOne({ event_id });
+
+      if (existingRating) {
+        res.status(200).json({ message: 'Thông tin đánh giá', totalRating: eventExists.totalRating, ratingData: existingRating });
+      } else {
+          res.status(404).json({ error: 'Không tìm thấy đánh giá cho sự kiện này' });
+      }
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+  }
+}
+
+module.exports = {createRating, deleteRating, getRating };
+
+
+
+
+
+
+
+
+
