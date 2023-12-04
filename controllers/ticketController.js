@@ -150,16 +150,7 @@ async function createTicket(req, res) {
         }
 
         order.Orders.push(orderDetailData);
-        /* const order = new Order({
-            client_id: _idClient,
-            event_id: _idEvent,
-            event_name: event.event_name,
-            event_date: founDayEvent,
-            event_location: event.event_location.city,
-            totalAmount: totalAmount,
-            zp_trans_id: zp_trans_id,
-            tickets: tickets,
-        }); */
+        
         await order.save();
 
         await sendTicketByEmail(email, client, buffers);

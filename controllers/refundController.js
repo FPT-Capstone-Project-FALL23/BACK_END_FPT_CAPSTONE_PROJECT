@@ -3,22 +3,26 @@ const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const RefundOrder = require('../model/refundOrderModel');
 const Organizer = require('../model/organizersModels');
+const mongoose = require('mongoose');
 const { returnZaloMoney } = require('../zalopay/payment');
 const { getMailOfClient, formatMoney } = require('./adminControler');
-
 
 async function createRefund(req, res) {
     try {
         const { _idOrder, money_refund, zp_trans_id, chairIds } = req.body;
 
-        const order = await Order.findById(_idOrder);
+        const order = await Order.aggregate([
+            { $match: { 'Orders._id': new mongoose.Types.ObjectId(_idOrder) } },
+            { $unwind: '$Orders' },
+            { $limit: 1 },
+        ]);
         if (!order) {
             return res.status(400).json({
                 status: false,
                 message: 'Order does not exist',
             });
         }
-        const _idEvent = order.event_id;
+        const _idEvent = order[0].event_id;
         const event = await Event.findById(_idEvent);
         if (!event) {
             return res.status(400).json({
@@ -34,7 +38,7 @@ async function createRefund(req, res) {
                 message: 'Organizer does not exist',
             });
         }
-        const _idClient = order.client_id;
+        const _idClient = order[0].Orders.client_id;
         const client = await Client.findById(_idClient);
         if (!client) {
             return res.status(400).json({
@@ -47,8 +51,7 @@ async function createRefund(req, res) {
         let foundChair = null;
         for (const chairId of chairIds) {
             event.event_date.forEach((date) => {
-                //Xác định khu vực sự kiện
-                //Xác định vị trí ghế
+                //Xác định khu vực sự kiện, vị trí ghế
                 date.event_areas.forEach((area) => {
                     area.rows.forEach((row) => {
                         const chair = row.chairs.find((c) => c._id.toString() == chairId);
@@ -64,11 +67,22 @@ async function createRefund(req, res) {
                 classTicket: foundEventArea,
                 chairName: foundChair.chair_name
             });
-            const ticket = order.tickets.find(t => t.chair_id.toString() === chairId.toString());
-            if (ticket) {
-                ticket.isRefund = true;
-            }
-            await order.save();
+            await Order.findOneAndUpdate(
+                {
+                    'Orders.tickets.chair_id': chairId
+                },
+                {
+                    $set: {
+                        'Orders.$[outer].tickets.$[inner].isRefund': true
+                    }
+                },
+                {
+                    arrayFilters: [
+                        { 'outer.tickets.chair_id': chairId },
+                        { 'inner.chair_id': chairId }
+                    ]
+                }
+            );
         }
         const orderRefund = new RefundOrder({
             order_id: _idOrder,
