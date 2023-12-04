@@ -840,8 +840,7 @@ async function getAllOrders(req, res) {
         const results = [];
         for (const order of orders) {
             for (const orderDetail of order.Orders) {
-                const client = await Client.findById(orderDetail.client_id,);
-                const user = await User.findById(client.user_id,);
+                const clientInfo = await getMailOfClient(orderDetail.client_id)
                 const result = {
                     transaction_date: formatDateTime(orderDetail.transaction_date),
                     zp_trans_id: orderDetail.zp_trans_id,
@@ -849,8 +848,8 @@ async function getAllOrders(req, res) {
                     event_date: formatDateTime(order.event_date),
                     totalAmount: orderDetail.totalAmount,
                     numberOfTickets: orderDetail.tickets.length,
-                    client_email: user.email,
-                    client_name: client.full_name
+                    client_email: clientInfo.fomatInfoClient.email,
+                    client_name: clientInfo.fomatInfoClient.full_name
                 };
                 results.push(result);
             }
