@@ -93,6 +93,9 @@ async function blockedUser(req, res) {
 ## Result: age
 ===============================*/
 function calculateAge(birthdate) {
+    if (!birthdate) {
+        return null
+    }
     const today = new Date();
     const birthdateDate = new Date(birthdate);
     const age = today.getFullYear() - birthdateDate.getFullYear();
@@ -228,7 +231,7 @@ async function getDetailOrganizer(req, res) {
             return res.status(404).json({ message: 'Client information not found for this user' });
         }
 
-        const eventOfOrganizer = await getAllEventOfOrganizer(organizer._id)
+        const eventOfOrganizer = await getAllEventOfOrganizer(organizer._id);
 
         // Combine the user and client information
         const detailedOrganizerInfo = {
@@ -239,17 +242,19 @@ async function getDetailOrganizer(req, res) {
             founded_date: formatDate(organizer?.founded_date),
             description: organizer?.description,
             avatarImage: organizer?.avatarImage,
-            address: organizer?.address,
+            address: getAddressString(organizer?.address),
             organizer_type: organizer?.organizer_type,
             isActive: organizer?.isActive,
             website: organizer?.website,
-            event: eventOfOrganizer,
         };
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
             message: 'success',
-            data: detailedOrganizerInfo
+            data: {
+                organizationalInformation: detailedOrganizerInfo,
+                organizationalEvents: eventOfOrganizer
+            }
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
@@ -275,13 +280,9 @@ async function getAllEventOfOrganizer(organizerId) {
             start_sales_date: formatDate(event?.sales_date.start_sales_date),
             end_sales_date: formatDate(event?.sales_date.end_sales_date),
             type_of_event: event?.type_of_event,
-            maxTicketInOrder: event?.maxTicketInOrder,
-            event_description: event?.event_description,
             isActive: event?.isActive,
             isHot: event?.isHot,
             totalRating: event?.totalRating,
-            eventImage: event?.eventImage,
-            type_layout: event?.type_layout,
             expectedAmount: calculateExpectedAmount(event),
             totalRevenue: calculateTotalRevenue(event),
             event_dates: getEventDateInformation(event),
@@ -305,11 +306,10 @@ function getEventDateInformation(event) {
             name_areas: area.name_areas,
             total_row: area.total_row,
             ticket_price: area.ticket_price,
-            rows: area.rows.map((row) => ({
-                row_name: row.row_name,
-                total_chair: row.total_chair,
-                ticket_price: row.ticket_price,
-            })),
+            total_seats_area: area.rows.reduce(
+                (acc, row) => acc + row.total_chair,
+                0
+            ),
         }));
 
         const totalSeatsSold = eventDate.event_areas.reduce(
@@ -329,13 +329,31 @@ function getEventDateInformation(event) {
 
         return {
             day_number: eventDate.day_number,
-            date: eventDate.date,
+            date: formatDateTime(eventDate.date),
             areas_information: areasInformation,
             total_seats_sold: totalSeatsSold,
         };
     });
 
     return eventDateInformation;
+}
+
+/*=============================
+## Name function: formatDateTime
+## Describe: format lại ngày và time
+## Params: dateTime
+## Result: fomatDate
+===============================*/
+function formatDateTime(dateTime) {
+    if (!dateTime) {
+        return null
+    }
+    const dateTimeConver = new Date(dateTime);
+
+    const date = dateTimeConver.toLocaleDateString();
+    const time = dateTimeConver.toLocaleTimeString();
+    const fomatDate = `${date} ${time}`
+    return fomatDate;
 }
 
 /*=============================
@@ -696,18 +714,18 @@ async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
     try {
         const { startDate, endDate } = req.body;
         const events = await Event.find({ isActive: true });
-        const refundOrders = await RefundOrder.find({ refunded: true });
+        // const refundOrders = await RefundOrder.find({ refunded: true });
 
         const totalAmount = calculateTotalAmountAndAdminEarnings(events);
-        const totalRefund = calculateTotalMoneyRefunded(refundOrders);
-        const calculateDaily = await calculateDailyStats(startDate, endDate);
+        // const totalRefund = calculateTotalMoneyRefunded(refundOrders);
+        // const calculateDaily = await calculateDailyStats(startDate, endDate);
 
         const fomatData = {
             totalAmountSold: totalAmount.formatAmountSold,
             totalAdminEarnings: totalAmount.formatAdminEarnings,
-            totalMoneyRefund: totalRefund.formatMoneyRefund,
-            totalAdminEarRefund: totalRefund.adminEarRefund,
-            calculateDailyStats: calculateDaily
+            // totalMoneyRefund: totalRefund.formatMoneyRefund,
+            // totalAdminEarRefund: totalRefund.adminEarRefund,
+            // calculateDailyStats: calculateDaily
         }
         // Xử lý khi thành công
         res.status(200).json({
@@ -790,6 +808,9 @@ function formatMoney(amount) {
 ## Result: formattedDate
 ===============================*/
 function formatDate(date) {
+    if (!date) {
+        return null
+    }
     const formattedDate = date.toISOString().split('T')[0];
     return formattedDate;
 }
@@ -802,34 +823,47 @@ function formatDate(date) {
 ===============================*/
 async function getAllOrders(req, res) {
     try {
-        const orders = await Order.find()
-            .sort({ transaction_date: -1 });
-        const totalTransactionAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-        const count = orders.length;
+        const orders = await Order.find().lean();
 
+        // Calculate total tickets and total amount
+        let totalTickets = 0;
+        let totalAmount = 0;
 
-        const formattedOrders = await Promise.all(orders.map(async (order) => {
-            const client = await getMailOfClient(order.client_id)
-            return {
-                totalAmount: formatMoney(order.totalAmount),
-                event_date: formatDate(order.event_date),
-                transaction_date: formatDate(order.transaction_date),
-                event_name: order.event_name,
-                zp_trans_id: order.zp_trans_id,
-                numberOfTickets: order.tickets.length,
-                client_name: client.fomatInfoClient.full_name,
-                client_email: client.fomatInfoClient.email
+        orders.forEach((order) => {
+            order.Orders.forEach((orderDetail) => {
+                totalAmount += orderDetail.totalAmount;
+            });
+            totalTickets += order.Orders.length;
+        });
+
+        // Get all sold tickets
+        const results = [];
+        for (const order of orders) {
+            for (const orderDetail of order.Orders) {
+                const client = await Client.findById(orderDetail.client_id,);
+                const user = await User.findById(client.user_id,);
+                const result = {
+                    transaction_date: formatDateTime(orderDetail.transaction_date),
+                    zp_trans_id: orderDetail.zp_trans_id,
+                    event_name: order.event_name,
+                    event_date: formatDateTime(order.event_date),
+                    totalAmount: orderDetail.totalAmount,
+                    numberOfTickets: orderDetail.tickets.length,
+                    client_email: user.email,
+                    client_name: client.full_name
+                };
+                results.push(result);
             }
-        }));
+        }
 
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
             message: 'success',
             data: {
-                totalTransactionAmount: formatMoney(totalTransactionAmount),
-                count: count,
-                orders: formattedOrders
+                totalTransactionAmount: formatMoney(totalAmount),
+                count: totalTickets,
+                orders: results
             }
         });
     } catch (error) {
