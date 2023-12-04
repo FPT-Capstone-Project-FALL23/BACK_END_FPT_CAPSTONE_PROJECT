@@ -2,6 +2,7 @@ const { createZaloPayOrder, callBack, checkZaloPayment, returnZaloMoney, checkZa
 const Event = require('../model/eventModels');
 const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
+const { formatDate } = require('./adminControler');
 
 async function createQRcode(req, res) {
     try {
@@ -93,16 +94,12 @@ async function getOrdersByClient(req, res) {
                 message: 'Client không tồn tại',
             });
         }
-        const orders = await Order.find({ 'Orders.client_id': _idClient })
-            .sort({ 'Orders.transaction_date': -1 })
-            .populate({
-                path: 'Orders',
-                match: { 'client_id': _idClient },
-                populate: {
-                    path: 'tickets',
-                },
-            });
-        res.status(200).json({ status: true, data: orders });
+        const orders = await Order.find({ 'Orders.client_id': _idClient }).exec();
+        const clientOrders = orders.map(order => {
+            order.Orders = order.Orders.filter(orderDetail => orderDetail.client_id.toString() === _idClient.toString());
+            return order;
+        }).filter(order => order.Orders.length > 0);
+        res.status(200).json({ status: true, data: clientOrders });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -112,16 +109,14 @@ async function getOrdersByClient(req, res) {
 async function getOrderDetail(req, res) {
     try {
         const { _idOrder } = req.body;
-        const order = await Order.findById(_idOrder);
+        const order = await Order.findOne({ 'Orders._id': _idOrder }).exec();
         if (!order) {
             return res.status(400).json({
                 status: false,
                 message: 'Order không tồn tại',
             });
         }
-        const _idEvent = order.event_id;
-        const chairIds = order.tickets.map(ticket => ticket.chair_id);
-        const event = await Event.findById(_idEvent);
+        const event = await Event.findById(order.event_id);
         if (!event) {
             return res.status(400).json({
                 status: false,
@@ -129,31 +124,29 @@ async function getOrderDetail(req, res) {
             });
         }
         const eventName = event.event_name;
+        const _idChair = order.Orders[0].tickets[0].chair_id;
         let eventDate = null;
-        let classTicket = null;
-        let Chairs = [];
-        const totalPrice = order.totalAmount;
-        const transaction = order.transaction_date;
-
-        for (const chairId of chairIds) {
-            event.event_date.forEach((date) => {
-                //xác định ngày diễn ra sự kiện
-                eventDate = date.date.toString().split('GMT')[0].trim();//tách xóa chữ múi giờ Đông Dương
-                //Xác định khu vực sự kiện
-                //Xác định vị trí ghế
-                date.event_areas.forEach((area) => {
-                    area.rows.forEach((row) => {
-                        const chair = row.chairs.find((c) => c._id.toString() == chairId);
-                        if (chair) {
-                            Chairs.push(chair.chair_name);
-                            classTicket = area.name_areas;
-                        }
-                    });
+        event.event_date.forEach((date) => {
+            date.event_areas.forEach((area) => {
+                area.rows.forEach((row) => {
+                    const chair = row.chairs.find((c) => c._id.toString() == _idChair);
+                    if (chair) {
+                        eventDate = formatDate(date.date);
+                    }
                 });
             });
-        }
+        });
+        const orderDetails = order.Orders
+            .filter(orderDetail => orderDetail._id.toString() === _idOrder)
+            .map(orderDetail => {
+                const classTicket = orderDetail.classTicket;
+                const chairs = orderDetail.tickets.map(ticket => ticket.chairName);
+                const totalPrice = orderDetail.totalAmount;
+                const transaction = formatDate(orderDetail.transaction_date);
 
-        res.status(200).json({ data: { eventName, eventDate, classTicket, Chairs, totalPrice, transaction } });
+                return { classTicket, chairs, totalPrice, transaction };
+            });
+        res.status(200).json({ data: { eventName, eventDate, orderDetails } });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -163,14 +156,12 @@ async function getOrderDetail(req, res) {
 async function getMyTicket(req, res) {
     try {
         const { _idOrder } = req.body;
-        const order = await Order.findById(_idOrder);
-        if (!order) {
-            return res.status(400).json({
-                status: false,
-                message: 'Order không tồn tại',
-            });
-        }
-        res.status(200).json({ order });
+        const orders = await Order.find({ 'Orders._id': _idOrder }).exec();
+        const orderDetails = orders.map(order => {
+            order.Orders = order.Orders.filter(orderDetail => orderDetail._id.toString() === _idOrder.toString());
+            return order;
+        }).filter(order => order.Orders.length > 0);
+        res.status(200).json({ status: true, data: orderDetails });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

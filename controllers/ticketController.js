@@ -4,10 +4,10 @@ const { upLoadImg } = require('../controllers/authController');
 const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const Event = require('../model/eventModels');
-const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
 const { checkZaloPayment } = require('../zalopay/payment');
-const { htmlTicket, htmlsendTicketByEmail } = require("../config/constHTML");
+const { htmlTicket } = require("../config/constHTML");
 const { sendTicketByEmail } = require("../controllers/emailController");
+const { formatDate } = require("../controllers/adminControler");
 
 /*=============================
 ## Name function: writeIdClientToChair
@@ -95,7 +95,7 @@ async function createTicket(req, res) {
             };
             event.event_date.forEach((date) => {
                 //xác định ngày diễn ra sự kiện
-                founDayEvent = date.date.toDateString().split('GMT')[0]/* .trim() */;//tách xóa chữ múi giờ Đông Dương
+                founDayEvent = formatDate(date.date);
                 timeEvent = date.date.toTimeString().split(" ")[0];
                 //Xác định khu vực sự kiện
                 //Xác định vị trí ghế
@@ -150,7 +150,7 @@ async function createTicket(req, res) {
         }
 
         order.Orders.push(orderDetailData);
-        
+
         await order.save();
 
         await sendTicketByEmail(email, client, buffers);

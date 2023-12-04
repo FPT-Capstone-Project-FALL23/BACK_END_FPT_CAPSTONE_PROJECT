@@ -4,6 +4,7 @@ const Order = require('../model/orderModel');
 const mongoose = require("mongoose");
 const { upLoadImg } = require("../controllers/authController");
 const unorm = require('unorm');
+const RefundOrder = require('../model/refundOrderModel');
 
 /*=============================
 ## Name function: checkExistsIdOrganizer
@@ -129,10 +130,19 @@ async function createEvent(req, res) {
             event_location: null,
             Orders: [],
         })
+        //create orderRefund default
+        const orderRefund = await RefundOrder.create({
+            order_id: order._id,
+            organizer_id: _idOfOrganizer,
+            event_id: event._id,
+            event_name: event_name,
+            OrderRefund: []
+        })
         res.status(200).json({
             status: true,
             data: event,
             order,
+            orderRefund,
             message: `Event tạo thành công`,
         });
     }
