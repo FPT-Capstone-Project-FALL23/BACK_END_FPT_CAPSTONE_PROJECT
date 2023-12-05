@@ -9,10 +9,10 @@ const { getMailOfClient, formatMoney } = require('./adminControler');
 
 async function createRefund(req, res) {
     try {
-        const { _idOrder, money_refund, zp_trans_id, chairIds } = req.body;
+        const { _idOrderDetail, money_refund, zp_trans_id, chairIds } = req.body;
 
         const order = await Order.aggregate([
-            { $match: { 'Orders._id': new mongoose.Types.ObjectId(_idOrder) } },
+            { $match: { 'Orders._id': new mongoose.Types.ObjectId(_idOrderDetail) } },
             { $unwind: '$Orders' },
             { $limit: 1 },
         ]);
