@@ -108,8 +108,8 @@ async function getOrdersByClient(req, res) {
 
 async function getOrderDetail(req, res) {
     try {
-        const { _idOrder } = req.body;
-        const order = await Order.findOne({ 'Orders._id': _idOrder }).exec();
+        const { _idOrderDetail } = req.body;
+        const order = await Order.findOne({ 'Orders._id': _idOrderDetail }).exec();
         if (!order) {
             return res.status(400).json({
                 status: false,
@@ -137,7 +137,7 @@ async function getOrderDetail(req, res) {
             });
         });
         const orderDetails = order.Orders
-            .filter(orderDetail => orderDetail._id.toString() === _idOrder)
+            .filter(orderDetail => orderDetail._id.toString() === _idOrderDetail)
             .map(orderDetail => {
                 const classTicket = orderDetail.classTicket;
                 const chairs = orderDetail.tickets.map(ticket => ticket.chairName);
@@ -155,10 +155,10 @@ async function getOrderDetail(req, res) {
 
 async function getMyTicket(req, res) {
     try {
-        const { _idOrder } = req.body;
-        const orders = await Order.find({ 'Orders._id': _idOrder }).exec();
+        const { _idOrderDetail } = req.body;
+        const orders = await Order.find({ 'Orders._id': _idOrderDetail }).exec();
         const orderDetails = orders.map(order => {
-            order.Orders = order.Orders.filter(orderDetail => orderDetail._id.toString() === _idOrder.toString());
+            order.Orders = order.Orders.filter(orderDetail => orderDetail._id.toString() === _idOrderDetail.toString());
             return order;
         }).filter(order => order.Orders.length > 0);
         res.status(200).json({ status: true, data: orderDetails });
