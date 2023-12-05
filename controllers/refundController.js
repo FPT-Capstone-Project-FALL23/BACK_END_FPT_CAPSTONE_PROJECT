@@ -84,16 +84,22 @@ async function createRefund(req, res) {
                 }
             );
         }
-        const orderRefund = new RefundOrder({
-            order_id: _idOrder,
-            event_id: _idEvent,
-            organizer_id: _idOrganizer,
+        const orderRefund = await RefundOrder.findOne({ order_id: order[0]._id });
+        if (!orderRefund) {
+            return res.status(400).json({
+                status: false,
+                message: 'OrderRefund not found for the event.',
+            });
+        }
+        orderRefund.organizer_id = _idOrganizer;
+        const orderRefundDetail = {
             client_id: _idClient,
-            event_name: event.event_name,
             money_refund: money_refund,
             zp_trans_id: zp_trans_id,
             tickets: tickets
-        });
+        };
+        orderRefund.OrderRefunds.push(orderRefundDetail);
+
         await orderRefund.save();
         res.status(200).json({ status: true, message: 'Ticket refund requested' });
     } catch (error) {
@@ -120,7 +126,7 @@ async function getListRefund(req, res) {
                 message: 'Refund order not found',
             });
         }
-        res.status(200).json({ status: true, refund, totalPages });
+        res.status(200).json({ status: true, refund, totalEvents, totalPages });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
@@ -137,10 +143,14 @@ async function acceptRefund(req, res) {
             });
         }
         const refund = await RefundOrder.findOneAndUpdate(
-            { _id: _idRefund },
-            { $set: { isRefund: isRefund } },
-            { new: true }
+            { 'OrderRefunds._id': _idRefund },
+            { $set: { 'OrderRefunds.$[refund].isRefund': isRefund } },
+            {
+                arrayFilters: [{ 'refund._id': _idRefund }],
+                new: true,
+            }
         );
+
         if (!refund) {
             return res.status(400).json({
                 status: false,
@@ -148,8 +158,10 @@ async function acceptRefund(req, res) {
             });
         }
         const chairIds = [];
-        refund.tickets.forEach(ticket => {
-            chairIds.push(ticket.chair_id);
+        refund.OrderRefunds.forEach(Datarefund => {
+            Datarefund.tickets.forEach(ticket => {
+                chairIds.push(ticket.chair_id);
+            });
         });
         for (const _idChair of chairIds) {
             await Event.findOneAndUpdate(
@@ -177,29 +189,39 @@ async function acceptRefund(req, res) {
 
 async function listIsRefund(req, res) {
     try {
-        const listRefund = await RefundOrder.find({ isRefund: true, refunded: false });
-        const totalRefundAmount = listRefund.reduce((sum, refund) => sum + refund.money_refund, 0);
-        const countRefund = listRefund.length;
+        const listRefund = await RefundOrder.find({ 'OrderRefunds.isRefund': true, 'OrderRefunds.refunded': false });
+
         if (!listRefund) {
             return res.status(400).json({
                 status: false,
                 message: 'Dont have any Refund Order',
             });
         }
-
-        const fomatInfoRefund = await Promise.all(listRefund.map(async (refund) => {
-            const client = await getMailOfClient(refund.client_id)
-            return {
-                refund_date: refund.refund_date.toISOString().split('T')[0],
-                zp_trans_id: refund.zp_trans_id,
-                event_name: refund.event_name,
-                money_refund: formatMoney(refund.money_refund),
-                client_name: client.fomatInfoClient.full_name,
-                client_email: client.fomatInfoClient.email,
-                numberOfTickets: refund.tickets.length,
-                _id: refund._id,
+        let totalRefundAmount = 0;
+        let countRefund = 0;
+        listRefund.forEach((refund) => {
+            refund.OrderRefunds.forEach((orderRefundDetail) => {
+                totalRefundAmount += orderRefundDetail.money_refund;
+            });
+            countRefund += refund.OrderRefunds.length;
+        });
+        const results = [];
+        for (const refund of listRefund) {
+            for (const orderRefundDetail of refund.OrderRefunds) {
+                const clientInfo = await getMailOfClient(orderRefundDetail.client_id)
+                const result = {
+                    refund_date: orderRefundDetail.refund_date.toISOString().split('T')[0],
+                    zp_trans_id: orderRefundDetail.zp_trans_id,
+                    event_name: refund.event_name,
+                    money_refund: formatMoney(orderRefundDetail.money_refund),
+                    client_name: clientInfo.fomatInfoClient.full_name,
+                    client_email: clientInfo.fomatInfoClient.email,
+                    numberOfTickets: orderRefundDetail.tickets.length,
+                    _id: orderRefundDetail._id,
+                };
+                results.push(result);
             }
-        }))
+        }
 
         res.status(200).json({
             status: true,
@@ -207,7 +229,7 @@ async function listIsRefund(req, res) {
             data: {
                 totalRefundAmount: formatMoney(totalRefundAmount),
                 count: countRefund,
-                refunds: fomatInfoRefund
+                refunds: results
             }
         });
     } catch (error) {
@@ -220,9 +242,12 @@ async function refundMoney(req, res) {
     try {
         const { _idRefund } = req.body;
         const refund = await RefundOrder.findOneAndUpdate(
-            { _id: _idRefund },
-            { $set: { refunded: true } },
-            { new: true }
+            { 'OrderRefunds._id': _idRefund },
+            { $set: { 'OrderRefunds.$[refund].refunded': true } },
+            {
+                arrayFilters: [{ 'refund._id': _idRefund }],
+                new: true,
+            }
         );
         if (!refund) {
             return res.status(400).json({
@@ -238,9 +263,14 @@ async function refundMoney(req, res) {
                 message: 'Event does not exist',
             });
         }
+        let zp_trans_id = null;
+        let amount = null;
         const description = `Hoàn trả tiền vé sự kiện ${event.event_name}`;
-        const zp_trans_id = refund.zp_trans_id;
-        const amount = refund.money_refund;
+        const zaloTrans = refund.OrderRefunds.find(orderRefund => orderRefund._id.toString() === _idRefund);
+        if (zaloTrans) {
+            zp_trans_id = zaloTrans.zp_trans_id;
+            amount = zaloTrans.money_refund;
+        }
         const response = await returnZaloMoney(amount, description, zp_trans_id);
         return res.json({ status: true, data: response.data, message: "Refund was successful" })
     } catch (error) {
