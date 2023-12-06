@@ -35,8 +35,8 @@ async function checkExistsIdOrganizer(_id) {
 ===============================*/
 function generateEventDate(event_date) {
     return event_date.map(date => ({
-        day_number: date.day_number,
-        date: new Date(date.date),
+        day_number: date.day_number || date?.date_number,
+        date: new Date(date?.date || date?.dateEvent),
         event_areas: date.event_areas.map(area => ({
             name_areas: area.name_areas,
             total_row: area.total_row,
@@ -78,7 +78,7 @@ async function createEvent(req, res) {
             isActive,
             isHot
         } = req.body.eventInfo;
-
+console.log("object", event_date);
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
 
         if (!isExists.status) {
@@ -301,7 +301,7 @@ async function updateEvent(req, res) {
             isActive,
             isHot
         } = req.body.eventInfo;
-
+        console.log("event_date", event_date);
         // Kiểm tra sự tồn tại của sự kiện và xác thực người tổ chức
         const event = await Event.findById(_idEvent);
         if (!event) {
