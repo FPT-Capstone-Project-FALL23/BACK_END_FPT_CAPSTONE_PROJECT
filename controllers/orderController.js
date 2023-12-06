@@ -2,7 +2,7 @@ const { createZaloPayOrder, callBack, checkZaloPayment, returnZaloMoney, checkZa
 const Event = require('../model/eventModels');
 const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
-const { formatDate } = require('./adminControler');
+const { formatDate, formatDateTime, getMailOfClient } = require('./adminControler');
 
 async function createQRcode(req, res) {
     try {
@@ -86,7 +86,6 @@ async function createCheckReturn(req, res) {
 async function getOrdersByClient(req, res) {
     try {
         const { _idClient } = req.body;
-        // Kiểm tra sự tồn tại của client
         const client = await Client.findById(_idClient);
         if (!client) {
             return res.status(400).json({
@@ -95,11 +94,27 @@ async function getOrdersByClient(req, res) {
             });
         }
         const orders = await Order.find({ 'Orders.client_id': _idClient }).exec();
-        const clientOrders = orders.map(order => {
-            order.Orders = order.Orders.filter(orderDetail => orderDetail.client_id.toString() === _idClient.toString());
-            return order;
-        }).filter(order => order.Orders.length > 0);
-        res.status(200).json({ status: true, data: clientOrders });
+        const results = [];
+        for (const order of orders) {
+            for (const orderDetail of order.Orders) {
+                const result = {
+                    client_id: orderDetail.client_id,
+                    event_id: order.event_id,
+                    event_name: order.event_name,
+                    event_date: order.event_date,
+                    event_location: order.event_location,
+                    totalAmount: orderDetail.totalAmount,
+                    zp_trans_id: orderDetail.zp_trans_id,
+                    transaction: orderDetail.transaction_date,
+                    classTicket: orderDetail.tickets[0].classTicket,
+                    chair_name: orderDetail.tickets.map(ticket => ticket.chairName),
+                    _idOrderDetail: orderDetail._id,
+                };
+                results.push(result);
+            }
+        }
+        const orderByClients = results.filter(result => result.client_id.equals(_idClient));
+        res.status(200).json({ status: true, data: orderByClients });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -123,30 +138,19 @@ async function getOrderDetail(req, res) {
                 message: 'Event không tồn tại',
             });
         }
-        const eventName = event.event_name;
-        const _idChair = order.Orders[0].tickets[0].chair_id;
-        let eventDate = null;
-        event.event_date.forEach((date) => {
-            date.event_areas.forEach((area) => {
-                area.rows.forEach((row) => {
-                    const chair = row.chairs.find((c) => c._id.toString() == _idChair);
-                    if (chair) {
-                        eventDate = formatDate(date.date);
-                    }
-                });
-            });
-        });
         const orderDetails = order.Orders
             .filter(orderDetail => orderDetail._id.toString() === _idOrderDetail)
             .map(orderDetail => {
-                const classTicket = orderDetail.classTicket;
+                const eventName = order.event_name;
+                const eventDate = order.event_date;
+                const classTicket = orderDetail.tickets[0].classTicket;
                 const chairs = orderDetail.tickets.map(ticket => ticket.chairName);
-                const totalPrice = orderDetail.totalAmount;
-                const transaction = formatDate(orderDetail.transaction_date);
+                const totalAmount = orderDetail.totalAmount;
+                const transaction = orderDetail.transaction_date;
 
-                return { classTicket, chairs, totalPrice, transaction };
+                return { eventName, eventDate, classTicket, chairs, totalAmount, transaction };
             });
-        res.status(200).json({ data: { eventName, eventDate, orderDetails } });
+        res.status(200).json({ data: orderDetails });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

@@ -962,5 +962,6 @@ module.exports = {
     formatMoney,
     blockedUser,
     formatDate,
-    getAllPayBusiness
+    getAllPayBusiness,
+    formatDateTime,
 }
