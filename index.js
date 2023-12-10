@@ -16,6 +16,7 @@ const notificationNewEvent = require('./controllers/notificationNewEvent');
 
 const adminRouter = require('./routes/adminRoutes');
 const ratingRouter = require('./routes/ratingRoutes');
+const payBusinessRouter = require('./routes/payBusinessRoutes');
 
 const app = express();
 
@@ -45,6 +46,8 @@ app.use("/api/checkin", checkinRouter);
 app.use("/api/rating", ratingRouter);
 //route api refund
 app.use("/api/refund", refundRouter);
+//route api payBusiness
+app.use("/api/payBusiness", payBusinessRouter);
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -62,5 +65,5 @@ mongoose.connect(process.env.MONGO_URL, {
 app.listen(process.env.PORT, () => {
     console.log(`Server started on port ${process.env.PORT}`)
     console.log(`Link server http://localhost:${process.env.PORT}/`)
-    
+
 })

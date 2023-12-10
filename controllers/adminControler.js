@@ -11,13 +11,21 @@ const { calculateTotalRevenue, calculateExpectedAmount } = require("./eventContr
 /*=============================
 ## Name function: getAllClients
 ## Describe: Lấy thông tin của toàn bộ client
-## Params: none
+## Params: page
 ## Result: status, message, data
 ===============================*/
 async function getAllClients(req, res) {
     try {
+        const { page } = req.body;
+        const clientsCount = await User.countDocuments({ role: 'client' });
+
+        const limit = 5; // Number of clients per page
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, clientsCount);
+
         const clients = await User.find({ role: 'client' }, 'email password')
             .sort({ registration_date: -1 })
+            .skip(skip)
+            .limit(limit)
             .exec();
 
         if (!clients || clients.length === 0) {
@@ -53,7 +61,13 @@ async function getAllClients(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
-            data: formattedClients
+            // data: formattedClients
+            data: {
+                clientsCount,
+                totalPages,
+                currentPage,
+                formattedClients,
+            },
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
@@ -156,12 +170,20 @@ async function getDetailClient(req, res) {
 /*=============================
 ## Name function: getAllOrganizers
 ## Describe: Lấy thông tin của toàn bộ Organizer
-## Params: none
+## Params: page
 ## Result: status, message, data
 ===============================*/
 async function getAllOrganizers(req, res) {
     try {
-        const organizersInfo = await Organizer.find({ isActive: true }).exec();
+        const { page } = req.body;
+        const organizersCount = await User.countDocuments({ role: 'organizer' });
+        const limit = 5; // Number of clients per page
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, organizersCount);
+
+        const organizersInfo = await Organizer.find({ isActive: true }).sort({ registration_date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .exec();;
 
         if (!organizersInfo || organizersInfo.length === 0) {
             return res.status(404).json({ message: 'No active organizers found' });
@@ -202,7 +224,12 @@ async function getAllOrganizers(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
-            data: formattedOrganizers
+            data: {
+                organizersCount,
+                totalPages,
+                currentPage,
+                formattedOrganizers
+            }
         });
     } catch (error) {
         console.error(error);
@@ -398,11 +425,12 @@ async function setIsActiveOrganizer(req, res) {
 /*=============================
 ## Name function: getAllOrganizerBlockeds
 ## Describe: Lấy thông tin của Organizer bị blocked
-## Params: none
+## Params: page
 ## Result: status, message, data
 ===============================*/
 async function getAllOrganizerBlockeds(req, res) {
     try {
+        const { page } = req.body;
         const organizersInfo = await Organizer.find({ isActive: true }).exec();
 
         if (!organizersInfo || organizersInfo.length === 0) {
@@ -411,7 +439,14 @@ async function getAllOrganizerBlockeds(req, res) {
 
         const organizersIds = organizersInfo.map(organizer => organizer.user_id);
 
-        const organizers = await User.find({ _id: { $in: organizersIds }, isBlocked: true }).exec();
+        const organizersCount = await User.countDocuments({ _id: { $in: organizersIds }, isBlocked: true });
+
+        const limit = 5; // Number of clients per page
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, organizersCount);
+
+        const organizers = await User.find({ _id: { $in: organizersIds }, isBlocked: true }).skip(skip)
+            .limit(limit)
+            .exec()
 
         if (!organizers || organizers.length === 0) {
             return res.status(404).json({ message: 'No active organizers found' });
@@ -444,7 +479,12 @@ async function getAllOrganizerBlockeds(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
-            data: formattedOrganizers
+            data: {
+                organizersCount,
+                totalPages,
+                currentPage,
+                formattedOrganizers
+            }
         });
     } catch (error) {
         console.error(error);
@@ -526,11 +566,12 @@ async function setIsHotEvent(req, res) {
 /*=============================
 ## Name function: getAllOrganizersIsAtivecFalse
 ## Describe: Lấy thông tin của toàn bộ Organizer voiws isActive is False
-## Params: none
+## Params: page
 ## Result: status, message, data
 ===============================*/
 async function getAllOrganizersIsActiveFalse(req, res) {
     try {
+        const { page } = req.body;
         const organizersInfo = await Organizer.find({ isActive: false }).exec();
 
         if (!organizersInfo || organizersInfo.length === 0) {
@@ -538,8 +579,14 @@ async function getAllOrganizersIsActiveFalse(req, res) {
         }
 
         const organizersIds = organizersInfo.map(organizer => organizer.user_id);
+        const organizersCount = await User.countDocuments({ _id: { $in: organizersIds } });
 
-        const organizers = await User.find({ _id: { $in: organizersIds } }, 'email').exec();
+        const limit = 5; // Number of clients per page
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, organizersCount);
+
+        const organizers = await User.find({ _id: { $in: organizersIds } }, 'email').skip(skip)
+            .limit(limit)
+            .exec();
 
         if (!organizers || organizers.length === 0) {
             return res.status(404).json({ message: 'No active organizers found' });
@@ -572,7 +619,12 @@ async function getAllOrganizersIsActiveFalse(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
-            data: formattedOrganizers
+            data: {
+                organizersCount,
+                totalPages,
+                currentPage,
+                formattedOrganizers
+            }
         });
     } catch (error) {
         console.error(error);
@@ -607,8 +659,14 @@ function getAddressString(address) {
 ===============================*/
 async function getAllEventIsActiveFalse(req, res) {
     try {
+        const { page } = req.body;
+        const eventsCount = await Event.countDocuments({ isActive: false });
+        const limit = 5; // Number of clients per page
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, eventsCount);
         // Find all events with isActive set to false
-        const events = await Event.find({ isActive: false }).populate('organizer_id', 'organizer_name');;
+        const events = await Event.find({ isActive: false }).populate('organizer_id', 'organizer_name').skip(skip)
+            .limit(limit)
+            .exec();
 
         const formattedEvent = events.map(event => ({
             _id: event._id,
@@ -621,7 +679,12 @@ async function getAllEventIsActiveFalse(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
-            data: formattedEvent
+            data: {
+                eventsCount,
+                totalPages,
+                currentPage,
+                formattedEvent
+            }
         });
     } catch (error) {
         console.error(error);
@@ -690,42 +753,43 @@ function calculateTotalAmountAndAdminEarnings(events) {
                     row.chairs.forEach(chair => {
                         if (chair.isBuy) {
                             totalAmountSold += row.ticket_price;
-                            formatAmountSold = formatMoney(totalAmountSold);
                             const onePercentSeatsSold = row.ticket_price * 0.01;
                             //quản trị viên kiếm được 1% giá vé cho mỗi ghế được bán
                             adminEarnings += onePercentSeatsSold;
-                            formatAdminEarnings = formatMoney(adminEarnings);
                         }
                     });
                 });
             });
         });
     });
-    return { formatAmountSold, formatAdminEarnings }
+    return { totalAmountSold, adminEarnings }
 }
 
 /*=============================
-## Name function: getTotalAmountSoldAllEventAndAdminEarnings
-## Describe: tổng tiền đã bán của tất cả sự kiện
+## Name function: getHomeAdmin
+## Describe: lấy thông tin cho trang HomeAdmin
 ## Params: none
 ## Result: status, message, data
 ===============================*/
-async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
+async function getHomeAdmin(req, res) {
     try {
-        const { startDate, endDate } = req.body;
-        const events = await Event.find({ isActive: true });
-        // const refundOrders = await RefundOrder.find({ refunded: true });
+        const events = await Event.find();
+        const refundOrders = await RefundOrder.find({ 'OrderRefunds.refunded': true });
 
         const totalAmount = calculateTotalAmountAndAdminEarnings(events);
-        // const totalRefund = calculateTotalMoneyRefunded(refundOrders);
+        const totalRefund = calculateTotalMoneyRefunded(refundOrders);
         // const calculateDaily = await calculateDailyStats(startDate, endDate);
+        const dataChart = await getTopRatedEvents();
+
+        const TotalMoneyAdminHas = totalAmount.adminEarnings + totalRefund.adminEarRefund;
 
         const fomatData = {
-            totalAmountSold: totalAmount.formatAmountSold,
-            totalAdminEarnings: totalAmount.formatAdminEarnings,
-            // totalMoneyRefund: totalRefund.formatMoneyRefund,
-            // totalAdminEarRefund: totalRefund.adminEarRefund,
-            // calculateDailyStats: calculateDaily
+            totalAmountSold: formatMoney(totalAmount.totalAmountSold),
+            formatMoneyRefund: formatMoney(totalRefund.totalMoneyRefunded),
+            totalAdminEarnings: formatMoney(totalAmount.adminEarnings),
+            adminEarRefund: formatMoney(totalRefund.adminEarRefund),
+            totalMoneyAdminHas: TotalMoneyAdminHas,
+            dataChart: dataChart
         }
         // Xử lý khi thành công
         res.status(200).json({
@@ -747,47 +811,17 @@ async function getTotalAmountSoldAllEventAndAdminEarnings(req, res) {
 function calculateTotalMoneyRefunded(refundOrders) {
     let totalMoneyRefunded = 0;
     let ActualFare = 0;
+    let adminEarRefund = 0;
 
     refundOrders.forEach(refundOrder => {
-        totalMoneyRefunded += refundOrder.money_refund;
-        formatMoneyRefund = formatMoney(totalMoneyRefunded);
-        ActualFare = (totalMoneyRefunded * 100) / 70;
-        adminEarRefund = formatMoney((ActualFare * 15) / 100);
-    });
-    return { formatMoneyRefund, adminEarRefund }
-}
-
-/*=============================
-## Name function: calculateDailyStats
-## Describe: tính toán số liệu thống kê hàng ngày
-## Params: startDate, endDate
-## Result: dailyStats
-===============================*/
-async function calculateDailyStats(startDate, endDate) {
-    const orders = await Order.find({
-        'Orders.transaction_date': {
-            $gte: new Date(startDate),
-            $lt: new Date(endDate)
-        }
+        refundOrder.OrderRefunds.forEach(orderRefundDetail => {
+            totalMoneyRefunded += orderRefundDetail.money_refund;
+            ActualFare = (totalMoneyRefunded * 100) / 70;
+            adminEarRefund = (ActualFare * 15) / 100;
+        })
     });
 
-    const dailyStats = {};
-
-    orders.forEach((order) => {
-        const date = formatDate(order.transaction_date);
-
-        if (!dailyStats[date]) {
-            dailyStats[date] = {
-                totalAmount: 0,
-                transactionCount: 0
-            };
-        }
-
-        dailyStats[date].totalAmount += order.totalAmount;
-        dailyStats[date].transactionCount += 1;
-    });
-
-    return dailyStats;
+    return { totalMoneyRefunded, adminEarRefund }
 }
 
 /*=============================
@@ -823,6 +857,7 @@ function formatDate(date) {
 ===============================*/
 async function getAllOrders(req, res) {
     try {
+        const { page } = req.body;
         const orders = await Order.find().lean();
 
         // Calculate total tickets and total amount
@@ -836,24 +871,7 @@ async function getAllOrders(req, res) {
             totalTickets += order.Orders.length;
         });
 
-        // Get all sold tickets
-        const results = [];
-        for (const order of orders) {
-            for (const orderDetail of order.Orders) {
-                const clientInfo = await getMailOfClient(orderDetail.client_id)
-                const result = {
-                    transaction_date: formatDateTime(orderDetail.transaction_date),
-                    zp_trans_id: orderDetail.zp_trans_id,
-                    event_name: order.event_name,
-                    event_date: formatDateTime(order.event_date),
-                    totalAmount: orderDetail.totalAmount,
-                    numberOfTickets: orderDetail.tickets.length,
-                    client_email: clientInfo.fomatInfoClient.email,
-                    client_name: clientInfo.fomatInfoClient.full_name
-                };
-                results.push(result);
-            }
-        }
+        const { totalPages, currentPage, eventsWithOrdersCount, eventsWithTotalTransactions } = await getAllEventsWithOrders(page);
 
         // Xử lý khi thành công
         res.status(200).json({
@@ -862,12 +880,212 @@ async function getAllOrders(req, res) {
             data: {
                 totalTransactionAmount: formatMoney(totalAmount),
                 count: totalTickets,
-                orders: results
+                eventsWithOrdersCount: eventsWithOrdersCount,
+                totalPages: totalPages,
+                currentPage: currentPage,
+                orders: eventsWithTotalTransactions
             }
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
+}
+
+/*=============================
+## Name function: getAllEventsWithOrders
+## Describe: lấy event_id, event_name, event_date, event_location,totalTransactions của Order
+## Params: page
+## Result: eventsWithTotalTransactions
+===============================*/
+async function getAllEventsWithOrders(page) {
+    try {
+        const limit = 5; // Number of orders per page
+
+        const eventsWithOrdersCount = await Order.countDocuments({ 'Orders.0': { $exists: true } });
+
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, eventsWithOrdersCount);
+
+        const eventsWithOrders = await Order.find({ 'Orders.0': { $exists: true } })
+            .select('event_id event_name event_date event_location Orders')
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const eventsWithTotalTransactions = eventsWithOrders.map(event => ({
+            _id: event._id,
+            event_name: event.event_name,
+            event_date: formatDate(event.event_date),
+            event_location: event.event_location,
+            totalTransactions: event.Orders.length
+        }));
+
+        return { totalPages, currentPage, eventsWithOrdersCount, eventsWithTotalTransactions };
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+/*=============================
+## Name function: getInformationEvent
+## Describe: Lấy thông tin của event
+## Params: _idOrder
+## Result: status, message, data
+===============================*/
+async function getInformationEvent(req, res) {
+    try {
+        const { _idOrder } = req.body;
+        const order = await Order.findById(_idOrder).lean();
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const eventId = order.event_id;
+        const event = await Event.findById(eventId).populate('organizer_id', 'organizer_name').lean();
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const totalSeats = getTotalSeats(event, order)
+
+        const eventInformationFormat = {
+            _id: order._id,
+            event_name: event?.event_name,
+            eventImage: event?.eventImage,
+            type_of_event: event?.type_of_event,
+            event_location: getAddressString(event?.event_location),
+            event_description: event?.event_description,
+            start_sales_date: formatDate(event?.sales_date?.start_sales_date),
+            end_sales_date: formatDate(event?.sales_date?.end_sales_date),
+            totalRating: event?.totalRating,
+            totalSeatsSoldAtEvent: totalSeats?.totalSeatsSoldAtEvent,
+            totalTicketSalesAtEvent: totalSeats?.totalTicketSalesAtEvent,
+            totalSeatsSoldAtOrder: totalSeats?.totalSeatsSoldAtOrder
+        };
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: eventInformationFormat,
+            // transactionInformation: transactionInformation
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/*=============================
+## Name function: getTotalSeats
+## Describe: Tính toonmgr số ghế đã bán
+## Params: event, order
+## Result: totalSeatsSoldAtEvent, totalSeatsSoldAtOrder, totalTicketSalesAtEvent
+===============================*/
+function getTotalSeats(event, order) {
+    // Tính tổng số ghế đã bán tại bảng Event
+    let totalSeatsSoldAtEvent = 0;
+    let totalTicketSalesAtEvent = 0;
+    event.event_date.forEach((day) => {
+        day.event_areas.forEach((area) => {
+            area.rows.forEach((row) => {
+                row?.chairs?.forEach((chair) => {
+                    if (chair.isBuy) {
+                        totalSeatsSoldAtEvent++;
+                        totalTicketSalesAtEvent += row.ticket_price;
+                    }
+                });
+            });
+        });
+    });
+
+    // Tính tổng số ghế đã bán tại bảng Order
+    let totalSeatsSoldAtOrder = 0;
+    order.Orders.forEach((orderDetail) => {
+        totalSeatsSoldAtOrder += orderDetail.tickets.length;
+    });
+
+    return {
+        totalSeatsSoldAtEvent,
+        totalSeatsSoldAtOrder,
+        totalTicketSalesAtEvent
+    }
+}
+
+/*=============================
+## Name function: getTransactionInformation
+## Describe: Lấy thông tin giao dịch
+## Params: _idOrder, page
+## Result: status, message, data
+===============================*/
+async function getTransactionInformation(req, res) {
+    try {
+        const { _idOrder, page } = req.body;
+        const order = await Order.findById(_idOrder).lean();
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        // Get total number of transactions
+        const totalTransactions = order.Orders.length;
+
+        // Calculate pagination parameters
+        const limit = 5;
+
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalTransactions);
+
+        // Get orders for the current page
+        const orders = order.Orders.slice(skip, skip + limit);
+
+        // Get transaction information for each order
+        const transactionInformation = [];
+        for (const orderDetail of orders) {
+            const clientInfo = await getMailOfClient(orderDetail.client_id);
+            const result = {
+                transaction_date: formatDateTime(orderDetail.transaction_date),
+                zp_trans_id: orderDetail.zp_trans_id,
+                totalAmount: orderDetail.totalAmount,
+                numberOfTickets: orderDetail.tickets.length,
+                client_email: clientInfo.fomatInfoClient.email,
+                client_name: clientInfo.fomatInfoClient.full_name,
+            };
+            transactionInformation.push(result);
+        }
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: {
+                totalTransactions,
+                totalPages,
+                currentPage,
+                transactionInformation,
+            },
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+/*=============================
+## Name function: calculatePaginationParams
+## Describe: Phân trang
+## Params: page, limit, totalCount
+## Result: totalPages, skip, currentPage
+===============================*/
+function calculatePaginationParams(page, limit, totalCount) {
+    // Tính tổng số trang nếu TotalCount lớn hơn 0, nếu không thì đặt TotalPages thành 0
+    const totalPages = totalCount > 0 ? Math.ceil(totalCount / limit) : 0;
+    const currentPage = page || 1;
+    const skip = (page - 1) * limit; // Tính số lượng tài liệu cần bỏ qua
+
+    return {
+        totalPages: totalPages,
+        skip: skip,
+        currentPage: currentPage
+    };
 }
 
 /*=============================
@@ -887,59 +1105,39 @@ async function getMailOfClient(user_id) {
 }
 
 /*=============================
-## Name function: getAllPayBusiness
-## Describe: lấy name và email
-## Params: user_id
-## Result: fomatInfoClient
+## Name function: getTopRatedEvents
+## Describe: Lấy 5 sự kiện được xếp hạng hàng đầu
+## Params: none
+## Result: eventsWithTransactions
 ===============================*/
-async function getAllPayBusiness() {
+async function getTopRatedEvents() {
     try {
-        // Find all events
-        const events = await Event.find();
+        // Retrieve the top 5 events based on totalRating
+        const topEvents = await Event.find()
+            .sort({ totalRating: -1 })
+            .limit(5)
+            .exec();
 
-        for (const event of events) {
-            // Iterate over the event_dates
-            for (const eventDate of event.event_date) {
-                // Check if the event_date has passed
-                if (eventDate.date < new Date()) {
-                    let totalAmountSold = 0;
+        // Calculate the total number of transactions for each event
+        const eventIds = topEvents.map(event => event._id);
+        const transactionCounts = await Order.aggregate([
+            { $match: { event_id: { $in: eventIds } } },
+            { $addFields: { totalTransactions: { $size: '$Orders' } } },
+            { $project: { event_id: 1, totalTransactions: 1 } },
+        ]);
 
-                    // Iterate over the event_areas and calculate the total amount sold
-                    for (const area of eventDate.event_areas) {
-                        for (const row of area.rows) {
-                            for (const chair of row.chairs) {
-                                if (chair.isBuy) {
-                                    totalAmountSold += row.ticket_price;
-                                }
-                            }
-                        }
-                    }
+        // Merge the totalTransactions into the corresponding events
+        const eventsWithTransactions = topEvents.map(event => {
+            const transactionCount = transactionCounts.find(count => count.event_id.equals(event._id));
+            return {
+                event_name: event.event_name,
+                totalTransactions: transactionCount ? transactionCount.totalTransactions : 0
+            };
+        });
 
-                    // Find the PayBusiness entry for the given event
-                    const payBusiness = await PayBusiness.findOne({ organizers_id: event.organizer_id });
-
-                    // Update the PayBusiness entry with the calculated total amount sold
-                    payBusiness.pay.push({
-                        event_id: event._id,
-                        totalEventAmount: totalAmountSold,
-                        paymentDate: new Date(),
-                        isPay: true
-                    });
-
-                    // Update the organizerTotalAmount field
-                    payBusiness.organizerTotalAmount += totalAmountSold;
-
-                    // Save the updated PayBusiness entry
-                    await payBusiness.save();
-
-                    console.log(`PayBusiness updated for event with ID ${event._id}. Total amount sold: ${totalAmountSold}`);
-                }
-            }
-        }
-
-        console.log('PayBusiness updated for all events successfully.');
+        return eventsWithTransactions
     } catch (error) {
-        console.error('Error updating PayBusiness:', error);
+        console.error(err);
     }
 }
 
@@ -955,13 +1153,16 @@ module.exports = {
     getAllOrganizersIsActiveFalse,
     getAllEventIsActiveFalse,
     getDetailEventActiveIsFalse,
-    getTotalAmountSoldAllEventAndAdminEarnings,
-    calculateTotalMoneyRefunded,
+    getHomeAdmin,
     getAllOrders,
     getMailOfClient,
     formatMoney,
     blockedUser,
     formatDate,
-    getAllPayBusiness,
     formatDateTime,
+    getAllEventsWithOrders,
+    getInformationEvent,
+    getTransactionInformation,
+    getTopRatedEvents,
+    calculatePaginationParams
 }

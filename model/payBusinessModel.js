@@ -8,6 +8,7 @@ const payForEvent = new mongoose.Schema({
     totalEventAmount: { type: Number },
     paymentDate: { type: Date },
     isPay: { type: Boolean, default: false },
+    isRequest: { type: Boolean }
 })
 
 const payBusinessSchema = new mongoose.Schema({

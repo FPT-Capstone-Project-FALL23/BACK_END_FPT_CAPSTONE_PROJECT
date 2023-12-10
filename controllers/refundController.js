@@ -221,7 +221,19 @@ async function acceptRefund(req, res) {
 
 async function listIsRefund(req, res) {
     try {
-        const listRefund = await RefundOrder.find({ 'OrderRefunds.isRefund': true, 'OrderRefunds.refunded': false });
+        const { page } = req.body;
+        // const listRefund = await RefundOrder.find({ 'OrderRefunds.isRefund': true, 'OrderRefunds.refunded': false });
+        const countRefund = await RefundOrder.countDocuments({ 'OrderRefunds.0': { $exists: true } });
+        console.log("countRefund", countRefund)
+
+        const listRefund = await RefundOrder.find({
+            'OrderRefunds': {
+                $elemMatch: {
+                    'isRefund': true,
+                    'refunded': false
+                }
+            }
+        });
 
         if (!listRefund) {
             return res.status(400).json({
@@ -230,13 +242,13 @@ async function listIsRefund(req, res) {
             });
         }
         let totalRefundAmount = 0;
-        let countRefund = 0;
         listRefund.forEach((refund) => {
             refund.OrderRefunds.forEach((orderRefundDetail) => {
                 totalRefundAmount += orderRefundDetail.money_refund;
             });
-            countRefund += refund.OrderRefunds.length;
         });
+
+
         const results = [];
         for (const refund of listRefund) {
             for (const orderRefundDetail of refund.OrderRefunds) {

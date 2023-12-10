@@ -14,26 +14,33 @@ const { getAllClients,
     getAllOrders,
     blockedUser,
     getAllPayBusiness,
+    getAllEventsWithOrders,
+    getEventByOrderId,
+    getInformationEvent,
+    getTransactionInformation,
+    getTopRatedEvents,
+    getHomeAdmin,
 } = require("../controllers/adminControler");
 
 const adminRouter = require("express").Router();
 
-adminRouter.get("/getAllClient", getAllClients)
+adminRouter.post("/getAllClient", getAllClients)
 adminRouter.post("/getDetailClient", getDetailClient)
-adminRouter.get("/getAllOrganizers", getAllOrganizers)
-adminRouter.get("/getAllOrganizerBlockeds", getAllOrganizerBlockeds)
-adminRouter.get("/getAllOrganizersIsAtivecFalse", getAllOrganizersIsActiveFalse)
-adminRouter.get("/getAllEventIsAtivecFalse", getAllEventIsActiveFalse)
+adminRouter.post("/getAllOrganizers", getAllOrganizers)
+adminRouter.post("/getAllOrganizerBlockeds", getAllOrganizerBlockeds)
+adminRouter.post("/getAllOrganizersIsAtivecFalse", getAllOrganizersIsActiveFalse)
+adminRouter.post("/getAllEventIsAtivecFalse", getAllEventIsActiveFalse)
 adminRouter.post("/getDetailOrganizer", getDetailOrganizer)
 adminRouter.post("/setIsActiveOrganizer", setIsActiveOrganizer)
 adminRouter.post("/setIsActiveEvent", setIsActiveEvent)
 adminRouter.post("/setIsHotEvent", setIsHotEvent)
 adminRouter.post("/getDetailEventActiveIsFalse", getDetailEventActiveIsFalse)
-adminRouter.post("/getTotalAmountSoldAllEventAndAdminEarnings", getTotalAmountSoldAllEventAndAdminEarnings)
-adminRouter.get("/calculateTotalMoneyRefunded", calculateTotalMoneyRefunded)
-adminRouter.get("/getAllOrders", getAllOrders)
+adminRouter.get("/getHomeAdmin", getHomeAdmin)
+adminRouter.post("/getAllOrders", getAllOrders)
 adminRouter.post("/blockedUser", blockedUser)
-adminRouter.get("/getAllPayBusiness", getAllPayBusiness)
+adminRouter.post("/getInformationEvent", getInformationEvent)
+adminRouter.post("/getTransactionInformation", getTransactionInformation)
+adminRouter.get("/getTopRatedEvents", getTopRatedEvents)
 
 
 module.exports = adminRouter
