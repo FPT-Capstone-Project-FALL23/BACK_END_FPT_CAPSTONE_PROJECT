@@ -3,47 +3,81 @@ const PayBusiness = require("../model/payBusinessModel");
 async function createPayBusinessOfEvent(req, res) {
     try {
         const { organizers_id, totalEventAmount } = req.body;
-        const { event_id, paymentDate, isPay, isRequest } = req.body.payBusiness;
+        const { event_id, event_name, isPay, isRequest } = req.body.payBusiness;
 
         // Find the PayBusiness document by organizers_id
-        const payBusiness = await PayBusiness.findOne({ organizers_id });
+        const payBusiness = await PayBusiness.findOne({ organizers_id: organizers_id }).exec();
 
-        if (!payBusiness) {
-            // If no PayBusiness document exists, create a new one
-            const newPayBusiness = new PayBusiness({
-                organizers_id,
-                pay: [{
-                    event_id,
-                    totalEventAmount,
-                    paymentDate,
-                    isPay,
-                    isRequest
-                }],
-                organizerTotalAmount: totalEventAmount
-            });
-            await newPayBusiness.save();
-        } else {
-            // If PayBusiness document exists, update the pay and organizerTotaflAmount fields
-            payBusiness.pay.push({
-                event_id,
-                totalEventAmount,
-                paymentDate,
-                isPay,
-                isRequest
-            });
-            payBusiness.organizerTotalAmount += totalEventAmount;
-            await payBusiness.save();
-        }
+        payBusiness.pay.push({
+            event_id: event_id,
+            event_name: event_name,
+            totalEventAmount: totalEventAmount,
+            isPay: isPay,
+            isRequest: isRequest
+        });
+        payBusiness.organizerTotalAmount += totalEventAmount;
+        await payBusiness.save();
 
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
             message: 'success',
-            data: payBusinessOrganizes
+            data: payBusiness
         })
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
     }
 }
 
-module.exports = { createPayBusinessOfEvent }
+async function getPayBusinessWithRequest(req, res) {
+    try {
+        const payBusinesses = await PayBusiness.find({ 'pay.isRequest': true }).populate('organizers_id');
+
+        const formatPayBussiness = [];
+        for (const payBusines of payBusinesses) {
+            for (const payDetail of payBusines.pay) {
+                const result = {
+                    organizer_name: payBusines.organizers_id.organizer_name,
+                    event_name: payDetail.event_name,
+                    totalEventAmount: payDetail.totalEventAmount,
+                    paymentDate: payDetail.paymentDate,
+                    isRequest: payDetail.isRequest,
+                    isPay: payDetail.isPay,
+                }
+                formatPayBussiness.push(result)
+            }
+        }
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: formatPayBussiness
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+async function getPayBusinessWithOrganizers(req, res) {
+    try {
+        const { organizers_id } = req.body;
+
+        const payBusinesses = await PayBusiness.findOne({ organizers_id: organizers_id }).exec();
+        
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: payBusinesses
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+module.exports = {
+    createPayBusinessOfEvent,
+    getPayBusinessWithRequest,
+    getPayBusinessWithOrganizers
+}

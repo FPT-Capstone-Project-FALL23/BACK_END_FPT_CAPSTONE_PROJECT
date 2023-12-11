@@ -6,7 +6,7 @@ const Organizer = require("../model/organizersModels");
 const PayBusiness = require("../model/payBusinessModel");
 const RefundOrder = require("../model/refundOrderModel");
 const User = require("../model/usersModel");
-const { calculateTotalRevenue, calculateExpectedAmount } = require("./eventController");
+const { eventStatistics } = require("./eventController");
 
 /*=============================
 ## Name function: getAllClients
@@ -310,8 +310,8 @@ async function getAllEventOfOrganizer(organizerId) {
             isActive: event?.isActive,
             isHot: event?.isHot,
             totalRating: event?.totalRating,
-            expectedAmount: calculateExpectedAmount(event),
-            totalRevenue: calculateTotalRevenue(event),
+            expectedAmount: eventStatistics(event),
+            totalRevenue: eventStatistics(event),
             event_dates: getEventDateInformation(event),
         }));
         return formatEvent;
