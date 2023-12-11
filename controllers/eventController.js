@@ -164,19 +164,17 @@ async function getAllEvents(req, res) {
     try {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
-        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ isActive: true }); // Tổng số sự kiện trong bảng
-        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
-
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
         const events = await Event.find({ isActive: true })
             .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
-        res.json({
+        res.status(200).json({
             events,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
-            currentPage: page,
+            currentPage,
             totalPages,
         }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
     }
@@ -198,9 +196,8 @@ async function getEventsByIdOrganizer(req, res) {
 
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
-        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ isActive: true, organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
-        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
 
         const isExists = await checkExistsIdOrganizer(_idOrganizer);
 
@@ -221,7 +218,7 @@ async function getEventsByIdOrganizer(req, res) {
         res.json({
             events,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
-            currentPage: page,
+            currentPage: currentPage,
             totalPages,
         }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
     }
@@ -258,9 +255,8 @@ async function getEventByType(req, res) {
         const { type_of_event } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
-        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
         const totalEvents = await Event.countDocuments({ type_of_event: type_of_event }); // Tổng số sự kiện trong bảng
-        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
 
         const events = await Event.find({ type_of_event: type_of_event })
             .sort({ isHot: -1, 'event_date.date': 1 })
@@ -270,7 +266,7 @@ async function getEventByType(req, res) {
         res.json({
             events,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
-            currentPage: page,
+            currentPage: currentPage,
             totalPages,
         }); // Trả về danh sách sự kiện, trang hiện tại và tổng số trang dưới dạng JSON
     }
@@ -375,7 +371,6 @@ async function searchEvent(req, res) {
         const { event_name, type_of_event, event_location, event_date } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 9; // Số lượng sự kiện hiển thị trên mỗi trang
-        const skip = (page - 1) * limit; // Số lượng sự kiện bỏ qua
 
         // Xây dựng các điều kiện tìm kiếm
         const searchConditions = { isActive: true };
@@ -392,34 +387,35 @@ async function searchEvent(req, res) {
             searchConditions.type_of_event = type_of_event;
         }
 
-        if (event_location && event_location.city) {
-            const cityKeyword = event_location.city;
-            const cityRegex = new RegExp(cityKeyword, "i");
-            searchConditions['event_location.city'] = cityRegex;
+        if (event_location && event_location.length > 0) {
+            searchConditions["event_location.city"] = { $in: event_location };
         }
 
         if (event_date) {
-            // Tìm kiếm sự kiện dựa trên ngày 
-            searchConditions.event_date = {
-                $elemMatch: {
-                    date: new Date(event_date),
-                },
+            const startDate = new Date(event_date);
+            startDate.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(event_date);
+            endDate.setHours(23, 59, 59, 999);
+
+            searchConditions["event_date.date"] = {
+                $gte: startDate,
+                $lt: endDate
             };
         }
 
+        const totalEvents = await Event.countDocuments(searchConditions); // Tổng số sự kiện trong bảng
+        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
         // Tìm kiếm sự kiện dựa trên các điều kiện
         const events = await Event.find(searchConditions)
             .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
 
-        const totalEvents = await Event.countDocuments(searchConditions); // Tổng số sự kiện trong bảng
-        const totalPages = Math.ceil(totalEvents / limit); // Tổng số trang
-
         res.status(200).json({
             status: true,
             data: events,
-            currentPage: page,
+            currentPage: currentPage,
             totalPages,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
         });
@@ -538,7 +534,6 @@ async function listEventOrganizer(req, res) {
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
         const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
         const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
-
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
 
         const events = await Event.find({ organizer_id: _idOrganizer })
@@ -593,7 +588,7 @@ async function statisticalAllEvent(req, res) {
         const { _idOrganizer } = req.body;
 
         const events = await Event.find({ organizer_id: _idOrganizer });
-
+        const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer });
         // Initialize counters
         let totalChairs = 0;
         let totalSoldChairs = 0;
@@ -614,6 +609,7 @@ async function statisticalAllEvent(req, res) {
             status: true,
             totalMoney,
             totalRevenue,
+            totalEvents,
             percent,
             totalChairs,
             totalSoldChairs,
@@ -692,13 +688,21 @@ async function statisticalMoneyOrganizer(req, res) {
         const result = await Order.aggregate([
             {
                 $match: {
-                    event_id: { $in: eventIds },
+                    'event_id': { $in: eventIds },
+                },
+            },
+            {
+                $unwind: '$Orders',
+            },
+            {
+                $match: {
+                    'event_id': { $in: eventIds },
                 },
             },
             {
                 $group: {
-                    _id: { $dateToString: { format: '%Y-%m', date: '$transaction_date' } },
-                    totalAmount: { $sum: '$totalAmount' },
+                    _id: { $dateToString: { format: '%Y-%m', date: '$Orders.transaction_date' } },
+                    totalAmount: { $sum: '$Orders.totalAmount' },
                 },
             },
             {
@@ -752,14 +756,23 @@ async function statisticalMoneyEvent(req, res) {
         const result = await Order.aggregate([
             {
                 $match: {
-                    event_id: new mongoose.Types.ObjectId(_idEvent),
-                    transaction_date: { $gte: start_sales_date, $lte: end_sales_date },
+                    'event_id': new mongoose.Types.ObjectId(_idEvent),
+                    'Orders.transaction_date': { $gte: start_sales_date, $lte: end_sales_date },
+                },
+            },
+            {
+                $unwind: '$Orders',
+            },
+            {
+                $match: {
+                    'event_id': new mongoose.Types.ObjectId(_idEvent),
+                    'Orders.transaction_date': { $gte: start_sales_date, $lte: end_sales_date },
                 },
             },
             {
                 $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$transaction_date' } },
-                    totalAmount: { $sum: '$totalAmount' },
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$Orders.transaction_date' } },
+                    totalAmount: { $sum: '$Orders.totalAmount' },
                 },
             },
             {
@@ -837,6 +850,31 @@ async function getTopRatedEventOfOrganizer(req, res) {
     }
 }
 
+
+async function selectChairInArea(req, res) {
+    try {
+        const { _idEvent, _idArea, dayNumber } = req.body;
+
+        const event = await Event.findById(_idEvent);
+        if (!event) {
+            return res.status(400).json({
+                status: false,
+                message: 'Event not found.'
+            });
+        }
+        const selectedDay = event.event_date.find(day => day.day_number === dayNumber);
+        const selectedArea = selectedDay.event_areas.find(area => area._id.toString() === _idArea);
+        const selectedChairs = selectedArea.rows.reduce((acc, row) => acc.concat(row.chairs), []);
+        res.status(200).json({
+            status: true,
+            data: selectedChairs
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -850,6 +888,7 @@ module.exports = {
     statisticalOneEvent,
     statisticalMoneyOrganizer,
     statisticalMoneyEvent,
+    selectChairInArea,
     eventStatistics,
     getTopRatedEventOfOrganizer
 };

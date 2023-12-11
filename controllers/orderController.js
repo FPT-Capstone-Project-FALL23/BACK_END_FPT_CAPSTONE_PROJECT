@@ -97,6 +97,16 @@ async function getOrdersByClient(req, res) {
         const results = [];
         for (const order of orders) {
             for (const orderDetail of order.Orders) {
+                let refundTicketCount = 0;
+                let totalAvailableTickets = 0;
+                for (const ticket of orderDetail.tickets) {
+                    if (ticket.isRefund === true) {
+                        refundTicketCount++;
+                    }
+                    else {
+                        totalAvailableTickets++;
+                    }
+                }
                 const result = {
                     client_id: orderDetail.client_id,
                     event_id: order.event_id,
@@ -108,9 +118,115 @@ async function getOrdersByClient(req, res) {
                     transaction: orderDetail.transaction_date,
                     classTicket: orderDetail.tickets[0].classTicket,
                     chair_name: orderDetail.tickets.map(ticket => ticket.chairName),
+                    refundTicketCount: refundTicketCount,
+                    totalAvailableTickets: totalAvailableTickets,
                     _idOrderDetail: orderDetail._id,
                 };
                 results.push(result);
+            }
+        }
+        const orderByClients = results.filter(result => result.client_id.equals(_idClient));
+        res.status(200).json({ status: true, data: orderByClients });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+async function getOrdersAvailableTickets(req, res) {
+    try {
+        const { _idClient } = req.body;
+        const client = await Client.findById(_idClient);
+        if (!client) {
+            return res.status(400).json({
+                status: false,
+                message: 'Client không tồn tại',
+            });
+        }
+        const orders = await Order.find({ 'Orders.client_id': _idClient }).exec();
+        const results = [];
+        for (const order of orders) {
+            for (const orderDetail of order.Orders) {
+                let refundTicketCount = 0;
+                let totalAvailableTickets = 0;
+                for (const ticket of orderDetail.tickets) {
+                    if (ticket.isRefund === true) {
+                        refundTicketCount++;
+                    }
+                    else {
+                        totalAvailableTickets++;
+                    }
+                }
+                if (totalAvailableTickets > 0) {
+                    const result = {
+                        client_id: orderDetail.client_id,
+                        event_id: order.event_id,
+                        event_name: order.event_name,
+                        event_date: order.event_date,
+                        event_location: order.event_location,
+                        totalAmount: orderDetail.totalAmount,
+                        zp_trans_id: orderDetail.zp_trans_id,
+                        transaction: orderDetail.transaction_date,
+                        classTicket: orderDetail.tickets[0].classTicket,
+                        chair_name: orderDetail.tickets.map(ticket => ticket.chairName),
+                        refundTicketCount: refundTicketCount,
+                        totalAvailableTickets: totalAvailableTickets,
+                        _idOrderDetail: orderDetail._id,
+                    };
+                    results.push(result);
+                }
+            }
+        }
+        const orderByClients = results.filter(result => result.client_id.equals(_idClient));
+        res.status(200).json({ status: true, data: orderByClients });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+async function getOrdersRefundTicket(req, res) {
+    try {
+        const { _idClient } = req.body;
+        const client = await Client.findById(_idClient);
+        if (!client) {
+            return res.status(400).json({
+                status: false,
+                message: 'Client không tồn tại',
+            });
+        }
+        const orders = await Order.find({ 'Orders.client_id': _idClient }).exec();
+        const results = [];
+        for (const order of orders) {
+            for (const orderDetail of order.Orders) {
+                let refundTicketCount = 0;
+                let totalAvailableTickets = 0;
+                for (const ticket of orderDetail.tickets) {
+                    if (ticket.isRefund === true) {
+                        refundTicketCount++;
+                    }
+                    else {
+                        totalAvailableTickets++;
+                    }
+                }
+                if (refundTicketCount > 0) {
+                    const result = {
+                        client_id: orderDetail.client_id,
+                        event_id: order.event_id,
+                        event_name: order.event_name,
+                        event_date: order.event_date,
+                        event_location: order.event_location,
+                        totalAmount: orderDetail.totalAmount,
+                        zp_trans_id: orderDetail.zp_trans_id,
+                        transaction: orderDetail.transaction_date,
+                        classTicket: orderDetail.tickets[0].classTicket,
+                        chair_name: orderDetail.tickets.map(ticket => ticket.chairName),
+                        refundTicketCount: refundTicketCount,
+                        totalAvailableTickets: totalAvailableTickets,
+                        _idOrderDetail: orderDetail._id,
+                    };
+                    results.push(result);
+                }
             }
         }
         const orderByClients = results.filter(result => result.client_id.equals(_idClient));
@@ -180,5 +296,7 @@ module.exports = {
     createCheckReturn,
     getOrdersByClient,
     getOrderDetail,
-    getMyTicket
+    getMyTicket,
+    getOrdersAvailableTickets,
+    getOrdersRefundTicket
 }
