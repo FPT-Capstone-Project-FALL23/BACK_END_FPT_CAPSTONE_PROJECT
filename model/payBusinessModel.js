@@ -6,7 +6,7 @@ const payForEvent = new mongoose.Schema({
         required: true,
     },
     totalEventAmount: { type: Number },
-    paymentDate: { type: Date },
+    paymentDate: { type: Date, default: Date.now },
     isPay: { type: Boolean, default: false },
     isRequest: { type: Boolean }
 })
