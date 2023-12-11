@@ -1112,7 +1112,7 @@ async function getMailOfClient(user_id) {
 ===============================*/
 async function getTopRatedEvents() {
     try {
-        // Retrieve the top 5 events based on totalRating
+        // Truy xuất 5 sự kiện hàng đầu dựa trên tổng Xếp hạng
         const topEvents = await Event.find()
             .sort({ totalRating: -1 })
             .limit(5)

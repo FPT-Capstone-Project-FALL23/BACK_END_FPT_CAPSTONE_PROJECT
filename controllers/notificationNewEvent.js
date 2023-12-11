@@ -16,7 +16,6 @@ const io = socketIo(server);
 
 io.on("connection", (socket) => {
   const email = socket.handshake.query.email;
-  console.log(email);
 
   socket.on("join_booking_room", (room) => {
     socket.join(room);

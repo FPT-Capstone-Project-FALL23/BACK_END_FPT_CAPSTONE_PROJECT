@@ -781,6 +781,62 @@ async function statisticalMoneyEvent(req, res) {
     }
 }
 
+async function getTopRatedEventOfOrganizer(req, res) {
+    try {
+        const { organizers_id } = req.body;
+        const currentDate = new Date();
+
+        // Truy xuất 5 sự kiện hàng đầu của tổ chức dựa trên tổng Xếp hạng
+        const topEvents = await Event.find({
+            organizers_id,
+            totalRating: { $gte: 1 },
+            "event_date.date": { $lt: currentDate },
+        })
+            .sort({ totalRating: -1 })
+            .limit(5)
+            .exec();
+
+        // Tạo một mảng kết quả để lưu thông tin sự kiện với trạng thái
+        const eventList = [];
+
+        for (const event of topEvents) {
+            const statistics = eventStatistics(event);
+            const totalRefund = await calculateTotalRefundAmount(event._id)
+
+            //Tổng tiền bán vé
+            const totalRevenue = statistics.totalRevenue;
+            //Tổng tiền nhận được khi bán vé
+            const totalEventAmount = totalRevenue * 0.99;
+
+            //Tổng số tiền hoàn trả cho sự kiện tổ chức nhận 
+            const totalEventRefund = (totalRefund.totalRefundAmount - totalRefund.adminEarRefund);
+
+            //tổng số tiền vé tổ chức nhận
+            const totalTicketAmountReceived = totalEventAmount + totalEventRefund
+
+
+            eventList.push({
+                event_name: event.event_name,
+                totalRating: event.totalRating,
+                totalTicketAmountReceived: totalTicketAmountReceived,
+            })
+        }
+
+        // Sắp xếp danh sách sự kiện theo tổngTicketAmountReceived theo thứ tự giảm dần
+        eventList.sort((a, b) => b.totalTicketAmountReceived - a.totalTicketAmountReceived);
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: eventList
+        })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+}
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -795,4 +851,5 @@ module.exports = {
     statisticalMoneyOrganizer,
     statisticalMoneyEvent,
     eventStatistics,
+    getTopRatedEventOfOrganizer
 };
