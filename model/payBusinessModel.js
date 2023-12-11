@@ -5,6 +5,7 @@ const payForEvent = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: true,
     },
+    event_name: { type: String },
     totalEventAmount: { type: Number },
     paymentDate: { type: Date, default: Date.now },
     isPay: { type: Boolean, default: false },

@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const { upLoadImg } = require("../controllers/authController");
 const unorm = require('unorm');
 const RefundOrder = require('../model/refundOrderModel');
+const PayBusiness = require('../model/payBusinessModel');
 const { calculatePaginationParams } = require('./adminControler');
 
 /*=============================
@@ -426,7 +427,6 @@ async function searchEvent(req, res) {
 }
 
 
-//
 function getEventStatus(event) {
     const currentDate = new Date();
     const firstSaleDate = event.sales_date.start_sales_date;
@@ -441,9 +441,14 @@ function getEventStatus(event) {
         return 'FINISHED';
     }
 }
-// Hàm để tính tổng tiền thực tế từ một sự kiện
-function calculateTotalRevenue(event) {
+// Hàm để tính tổng tiền thực tế, dự kiến, số ghế, ghế đã bán, ghế đã check in từ một sự kiện
+function eventStatistics(event) {
     let totalRevenue = 0;
+    let expectedAmount = 0;
+    let totalChairs = 0;
+    let totalSoldChairs = 0;
+    let totalCheckedInChairs = 0;
+
 
     // Lặp qua tất cả các ngày sự kiện
     event.event_date.forEach((date) => {
@@ -451,30 +456,76 @@ function calculateTotalRevenue(event) {
         date.event_areas.forEach((area) => {
             // Lặp qua tất cả dãy ghế (rows) trong khu vực
             area.rows.forEach((row) => {
+                totalChairs += row.total_chair
+                expectedAmount += row.total_chair * row.ticket_price;
                 // Lặp qua tất cả các ghế (chairs) trong dãy ghế
                 row.chairs.forEach((chair) => {
                     if (chair.isBuy) {
                         totalRevenue += row.ticket_price;
+                        totalSoldChairs++;
+                    } if (chair.isCheckin) {
+                        totalCheckedInChairs++;
                     }
                 });
             });
         });
     });
-    return totalRevenue;
+    return { totalRevenue, expectedAmount, totalChairs, totalSoldChairs, totalCheckedInChairs };
 }
 
-// Hàm để tính tổng tiền dựu kiến của một sự kiện
-function calculateExpectedAmount(event) {
-    let totalMoney = 0;
-    event.event_date.forEach((date) => {
-        // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
-        date.event_areas.forEach((area) => {
-            area.rows.forEach((row) => {
-                totalMoney += row.total_chair * row.ticket_price;
+// Hàm để tính tổng tiền hoàn vé và tiền admin nhận của một sự kiện
+async function calculateTotalRefundAmount(eventId) {
+    try {
+        const refundOrders = await RefundOrder.find({
+            event_id: eventId,
+            'OrderRefunds': {
+                $elemMatch: {
+                    'isRefund': true,
+                    'refunded': true
+                }
+            }
+        });
+        let totalRefundAmount = 0;
+        let ActualFare = 0;
+        let adminEarRefund = 0;
+        refundOrders.forEach((refundOrder) => {
+            refundOrder.OrderRefunds.forEach((refundOrderDetail) => {
+                totalRefundAmount += refundOrderDetail.money_refund;
+                ActualFare = (totalRefundAmount * 100) / 70;
+                adminEarRefund = (ActualFare * 15) / 100;
             });
         });
-    });
-    return totalMoney;
+
+        return { totalRefundAmount, adminEarRefund };
+    } catch (error) {
+        console.error(error);
+        return 0;
+    }
+}
+
+async function checkPaymentRequested(organizers_id, event_id) {
+    try {
+        const payBusiness = await PayBusiness.findOne({
+            organizers_id: organizers_id,
+            'pay.event_id': event_id,
+        });
+        if (!payBusiness) {
+            return {
+                isStatus: false,
+                totalEventAmount: 0
+            };
+        }
+        const eventPayment = payBusiness.pay.find(
+            (payment) => payment.event_id.toString() === event_id.toString()
+        );
+        return {
+            isStatus: true,
+            totalEventAmount: eventPayment?.totalEventAmount
+        }
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
 }
 
 async function listEventOrganizer(req, res) {
@@ -494,33 +545,28 @@ async function listEventOrganizer(req, res) {
         const eventList = [];
 
         // Lặp qua danh sách sự kiện và trích xuất thông tin
-        events.forEach((event) => {
+        for (const event of events) {
             const eventStatus = getEventStatus(event);
-            //tính tiền thực tế
-            const totalRevenue = calculateTotalRevenue(event);
-            // Tính toán số tiền dự kiến
-            const expectedAmount = calculateExpectedAmount(event)
-            // let totalMoney = 0;
-            // event.event_date.forEach((date) => {
-            //     // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
-            //     date.event_areas.forEach((area) => {
-            //         area.rows.forEach((row) => {
-            //             totalMoney += row.total_chair * row.ticket_price;
-            //         });
-            //     });
-            // });
+            const statistics = eventStatistics(event);
+            // Tính toán số hoàn vé
+            const totalRefund = await calculateTotalRefundAmount(event._id)
+
+            const isRequestPayment = await checkPaymentRequested(_idOrganizer, event._id)
             // Thêm thông tin sự kiện và trạng thái vào danh sách kết quả
             eventList.push({
                 _idEvent: event._id,
                 eventName: event.event_name,
                 totalRating: event.totalRating,
                 startDay: event.event_date[0].date,
-                totalEstimated: expectedAmount,
-                totalActual: totalRevenue,
+                totalEstimated: statistics.expectedAmount,
+                totalActual: statistics.totalRevenue,
+                totalRefundAmount: totalRefund.totalRefundAmount,
+                adminEarRefund: totalRefund.adminEarRefund,
                 eventStatus: eventStatus,
                 isActive: event.isActive,
+                isRequestPayment: isRequestPayment.isStatus,
             });
-        });
+        };
         const sortedEvents = eventList.sort((a, b) => {
             const sort = { "HAPPENNING": 1, "UPCOMING": 2, "FINISHED": 3 };
             return sort[a.eventStatus] - sort[b.eventStatus];
@@ -537,8 +583,6 @@ async function listEventOrganizer(req, res) {
     }
 }
 
-
-
 async function statisticalAllEvent(req, res) {
     try {
         const { _idOrganizer } = req.body;
@@ -553,26 +597,12 @@ async function statisticalAllEvent(req, res) {
         let totalRevenue = 0;
         // Loop through each event and calculate statistics
         events.forEach((event) => {
-            //tính tiền thực tế
-            totalRevenue += calculateTotalRevenue(event);
-            // Tính toán số tiền dự kiến
-            totalMoney += calculateExpectedAmount(event);
-
-            event.event_date.forEach((day) => {
-                day.event_areas.forEach((area) => {
-                    area.rows.forEach((row) => {
-                        row.chairs.forEach((chair) => {
-                            totalChairs++;
-                            if (chair.isBuy) {
-                                totalSoldChairs++;
-                            }
-                            if (chair.isCheckin) {
-                                totalCheckedInChairs++;
-                            }
-                        });
-                    });
-                });
-            });
+            statistics = eventStatistics(event);
+            totalRevenue += statistics.totalRevenue
+            totalChairs += statistics.totalChairs
+            totalSoldChairs += statistics.totalSoldChairs
+            totalCheckedInChairs += statistics.totalCheckedInChairs
+            totalMoney += statistics.expectedAmount
         });
         const percent = (totalRevenue / totalMoney) * 100
         res.status(200).json({
@@ -593,7 +623,7 @@ async function statisticalAllEvent(req, res) {
 
 async function statisticalOneEvent(req, res) {
     try {
-        const { _idEvent } = req.body;
+        const { _idEvent, _idOrganizer } = req.body;
 
         const event = await Event.findById(_idEvent);
 
@@ -603,42 +633,20 @@ async function statisticalOneEvent(req, res) {
                 message: 'Event not found',
             });
         }
-
-        // Initialize counters
-        let totalChairs = 0;
-        let totalSoldChairs = 0;
-        let totalCheckedInChairs = 0;
-
-        // Loop through each day, area, row, and chair to calculate statistics
-        const totalRevenue = calculateTotalRevenue(event);
-        // Tính toán số tiền dự kiến
-        let totalMoney = 0;
-        totalMoney = calculateExpectedAmount(event);
-        event.event_date.forEach((day) => {
-            day.event_areas.forEach((area) => {
-                area.rows.forEach((row) => {
-                    row.chairs.forEach((chair) => {
-                        totalChairs++;
-                        if (chair.isBuy) {
-                            totalSoldChairs++;
-                        }
-                        if (chair.isCheckin) {
-                            totalCheckedInChairs++;
-                        }
-                    });
-                });
-            });
-        });
-        const percent = (totalRevenue / totalMoney) * 100
+        const statistics = eventStatistics(event);
+        const totalRefundAmount = await calculateTotalRefundAmount(_idEvent);
+        const payBusinessOfEvent = await checkPaymentRequested(_idOrganizer, _idEvent)
 
         res.status(200).json({
             status: true,
-            totalMoney,
-            totalRevenue,
-            percent,
-            totalChairs,
-            totalSoldChairs,
-            totalCheckedInChairs,
+            totalMoney: statistics.expectedAmount,
+            totalRevenue: statistics.totalRevenue,
+            percent: (statistics.totalRevenue / statistics.expectedAmount) * 100,
+            totalChairs: statistics.totalChairs,
+            totalSoldChairs: statistics.totalSoldChairs,
+            totalCheckedInChairs: statistics.totalCheckedInChairs,
+            totalRefundAmount: totalRefundAmount.totalRefundAmount,
+            totalEventAmount: payBusinessOfEvent.totalEventAmount,
         });
     } catch (error) {
         console.error(error);
@@ -825,5 +833,6 @@ module.exports = {
     statisticalMoneyEvent,
     calculateTotalRevenue,
     calculateExpectedAmount,
-    selectChairInArea
+    selectChairInArea,
+    eventStatistics,
 };
