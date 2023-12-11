@@ -831,8 +831,6 @@ module.exports = {
     statisticalOneEvent,
     statisticalMoneyOrganizer,
     statisticalMoneyEvent,
-    calculateTotalRevenue,
-    calculateExpectedAmount,
     selectChairInArea,
     eventStatistics,
 };
