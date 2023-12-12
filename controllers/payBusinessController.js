@@ -64,7 +64,7 @@ async function getPayBusinessWithOrganizers(req, res) {
         const { organizers_id } = req.body;
 
         const payBusinesses = await PayBusiness.findOne({ organizers_id: organizers_id }).exec();
-        
+
         // Xử lý khi thành công
         res.status(200).json({
             status: true,
@@ -76,8 +76,31 @@ async function getPayBusinessWithOrganizers(req, res) {
     }
 }
 
+async function calculateTotalAmountAndTransactionNumber(req, res) {
+    try {
+        const payBusiness = await PayBusiness.findOne().exec();
+        if (!payBusiness) {
+            throw new Error('PayBusiness not found');
+        }
+
+        const totalAmount = payBusiness.pay.reduce((acc, pay) => acc + pay.totalEventAmount, 0);
+        const transactionNumber = payBusiness.pay.length;
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: { totalAmount, transactionNumber, payBusiness }
+        })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
 module.exports = {
     createPayBusinessOfEvent,
     getPayBusinessWithRequest,
-    getPayBusinessWithOrganizers
+    getPayBusinessWithOrganizers,
+    calculateTotalAmountAndTransactionNumber
 }

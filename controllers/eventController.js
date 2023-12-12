@@ -801,7 +801,7 @@ async function getTopRatedEventOfOrganizer(req, res) {
 
         // Truy xuất 5 sự kiện hàng đầu của tổ chức dựa trên tổng Xếp hạng
         const topEvents = await Event.find({
-            organizers_id,
+            organizers_id: organizers_id,
             totalRating: { $gte: 1 },
             "event_date.date": { $lt: currentDate },
         })
@@ -875,6 +875,21 @@ async function selectChairInArea(req, res) {
     }
 }
 
+async function getLatestHotEventImages(req, res) {
+    try {
+        const events = await Event.find({ isHot: true })
+            .sort({ create_date: -1 }) // Sort in descending order of create_date
+            .limit(3); // Limit the results to 3
+
+        const eventImages = events.map((event) => event.eventImage);
+
+        res.json(eventImages);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred" });
+    }
+}
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -890,5 +905,6 @@ module.exports = {
     statisticalMoneyEvent,
     selectChairInArea,
     eventStatistics,
-    getTopRatedEventOfOrganizer
+    getTopRatedEventOfOrganizer,
+    getLatestHotEventImages
 };

@@ -300,21 +300,27 @@ async function getAllEventOfOrganizer(organizerId) {
         if (!events) {
             return null;
         }
-        const formatEvent = events.map((event) => ({
-            event_name: event?.event_name,
-            type_of_event: event?.type_of_event,
-            event_location: getAddressString(event?.event_location),
-            start_sales_date: formatDate(event?.sales_date.start_sales_date),
-            end_sales_date: formatDate(event?.sales_date.end_sales_date),
-            type_of_event: event?.type_of_event,
-            isActive: event?.isActive,
-            isHot: event?.isHot,
-            totalRating: event?.totalRating,
-            expectedAmount: eventStatistics(event),
-            totalRevenue: eventStatistics(event),
-            event_dates: getEventDateInformation(event),
-        }));
-        return formatEvent;
+        const eventList = [];
+
+        for (const event of events) {
+            // const statistics = eventStatistics(event);
+            // console.log("statistics", statistics)
+            eventList.push({
+                event_name: event?.event_name,
+                type_of_event: event?.type_of_event,
+                event_location: getAddressString(event?.event_location),
+                start_sales_date: formatDate(event?.sales_date.start_sales_date),
+                end_sales_date: formatDate(event?.sales_date.end_sales_date),
+                type_of_event: event?.type_of_event,
+                isActive: event?.isActive,
+                isHot: event?.isHot,
+                totalRating: event?.totalRating,
+                // expectedAmount: statistics?.expectedAmount,
+                // totalRevenue: statistics?.totalRevenue,
+                event_dates: getEventDateInformation(event),
+            });
+        };
+        return eventList;
     } catch (error) {
         console.error("Error retrieving events:", error);
         throw error;

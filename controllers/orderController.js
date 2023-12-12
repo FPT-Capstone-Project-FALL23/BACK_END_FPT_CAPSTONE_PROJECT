@@ -3,6 +3,7 @@ const Event = require('../model/eventModels');
 const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const { formatDate, formatDateTime, getMailOfClient } = require('./adminControler');
+const RefundOrder = require('../model/refundOrderModel');
 
 async function createQRcode(req, res) {
     try {
@@ -276,12 +277,63 @@ async function getOrderDetail(req, res) {
 async function getMyTicket(req, res) {
     try {
         const { _idOrderDetail } = req.body;
-        const orders = await Order.find({ 'Orders._id': _idOrderDetail }).exec();
-        const orderDetails = orders.map(order => {
-            order.Orders = order.Orders.filter(orderDetail => orderDetail._id.toString() === _idOrderDetail.toString());
-            return order;
-        }).filter(order => order.Orders.length > 0);
-        res.status(200).json({ status: true, data: orderDetails });
+
+        const order = await Order.findOne({ 'Orders._id': _idOrderDetail }).exec();
+        if (!order) {
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+
+        const orderDetail = order.Orders.find(orderDetail => orderDetail._id.toString() === _idOrderDetail.toString());
+        if (!orderDetail) {
+            res.status(404).json({ error: 'Order detail not found' });
+            return;
+        }
+
+        const refundOrder = await RefundOrder.findOne({ order_id: order._id }).exec();
+        console.log("refundOrder", refundOrder)
+        if (!refundOrder) {
+            orderDetail.refunded = false;
+        } else {
+            const refundedTickets = refundOrder.OrderRefunds
+                .filter(refund => refund.client_id.toString() === orderDetail.client_id.toString())
+                .map(refund => refund.tickets.map(ticket => ticket.chair_id.toString()))
+                .reduce((acc, val) => acc.concat(val), []);
+            console.log("refundedTickets", refundedTickets)
+            orderDetail.tickets.forEach(ticket => {
+                ticket.refunded = refundedTickets.includes(ticket.chair_id.toString());
+                console.log("ticket.refunded", ticket.refunded)
+            });
+        }
+
+        // Format the data
+        const formattedData = {
+            _id: order._id,
+            event_id: order.event_id,
+            event_name: order.event_name,
+            event_date: order.event_date,
+            event_location: order.event_location,
+            Orders: [
+                {
+                    client_id: orderDetail.client_id,
+                    totalAmount: orderDetail.totalAmount,
+                    zp_trans_id: orderDetail.zp_trans_id,
+                    transaction_date: orderDetail.transaction_date,
+                    tickets: orderDetail.tickets.map(ticket => ({
+                        chair_id: ticket.chair_id,
+                        classTicket: ticket.classTicket,
+                        chairName: ticket.chairName,
+                        ticket_price: ticket.ticket_price,
+                        isRefund: ticket.isRefund,
+                        refunded: ticket.refunded,
+                        ticket: ticket.ticket,
+                        _id: ticket._id
+                    }))
+                }
+            ]
+        };
+
+        res.status(200).json({ status: true, data: formattedData });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

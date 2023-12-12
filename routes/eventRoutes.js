@@ -2,7 +2,7 @@ const { createEvent, getAllEvents, getEventsByIdOrganizer, getDetailEvent,
    getEventByType, updateEvent, searchEvent, listEventOrganizer,
    statisticalAllEvent, statisticalOneEvent, /* getEventRating, */
    statisticalMoneyOrganizer, statisticalMoneyEvent,
-   selectChairInArea, getTopRatedEventOfOrganizer } = require("../controllers/eventController");
+   selectChairInArea, getTopRatedEventOfOrganizer, getLatestHotEventImages } = require("../controllers/eventController");
 const eventRouter = require("express").Router();
 
 eventRouter.post("/createEvent", createEvent)
@@ -20,4 +20,5 @@ eventRouter.post("/statisticalMoneyOrganizer", statisticalMoneyOrganizer)
 eventRouter.post("/getTopRatedEventOfOrganizer", getTopRatedEventOfOrganizer)
 // eventRouter.post("/getEventRating", getEventRating)
 eventRouter.post("/selectChairInArea", selectChairInArea)
+eventRouter.get("/getLatestHotEventImages", getLatestHotEventImages)
 module.exports = eventRouter
