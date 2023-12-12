@@ -1,7 +1,7 @@
 const Event = require ("../model/eventModels");
 const Rating = require ("../model/ratingModel");
 const Client = require ("../model/clientsModel");
-const mongoose = require('mongoose');
+
 
 
 async function createRating(req, res) {
@@ -19,6 +19,7 @@ async function createRating(req, res) {
       const clientExists = await Client.findById(client_id);
 
       if (!eventExists || !clientExists) {
+        console.error("Không tìm thấy Event hoặc Client:", event_id, client_id);
           return res.status(404).json({ error: 'Không tìm thấy Event hoặc Client' });
       }
 
@@ -57,7 +58,7 @@ async function createRating(req, res) {
           eventExists.totalRating = averageRating;
           await eventExists.save();
 
-          return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, updatedRating });
+          return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, savedRating });
       }
   } catch (error) {
       console.error(error);
@@ -99,7 +100,7 @@ async function deleteRating(req, res) {
           eventExists.totalRating = averageRating;
           await eventExists.save();
 
-          res.status(200).json({ message: 'Đánh giá đã được xóa thành công', totalRating: eventExists.totalRating });
+          res.status(200).json({ message: 'Đánh giá đã được xóa thành công', totalRating: eventExists.totalRating, updatedRating});
       } else {
           // Nếu không tìm thấy bản ghi xếp hạng, có thể xử lý theo ý của bạn
           res.status(404).json({ error: 'Không tìm thấy bản ghi xếp hạng cho sự kiện này' });
@@ -141,4 +142,39 @@ async function getRating(req, res) {
   }
 }
 
-module.exports = {createRating, deleteRating, getRating };
+async function getClientRating(req, res) {
+    try {
+      const { event_id, client_id } = req.body;
+  
+      // Kiểm tra xem event_id và client_id có được cung cấp không
+      if (!event_id || !client_id) {
+        return res.status(400).json({ error: 'Vui lòng cung cấp event_id và client_id' });
+      }
+  
+      // Kiểm tra xem Event tham chiếu có tồn tại không
+      const eventExists = await Event.findById(event_id);
+  
+      if (!eventExists) {
+        return res.status(404).json({ error: 'Không tìm thấy Event' });
+      }
+  
+      // Kiểm tra xem người dùng đã đánh giá sự kiện chưa
+      const existingRating = await Rating.findOne({ event_id, client_id });
+  
+      if (existingRating) {
+        // Người dùng đã đánh giá, trả về thông tin đánh giá
+        res.status(200).json({
+          message: 'Thông tin đánh giá',
+          clientRating: existingRating,
+        });
+      } else {
+        res.status(404).json({ error: 'Không tìm thấy đánh giá cho sự kiện này từ khách hàng cụ thể' });
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+    }
+  }
+  
+
+module.exports = {createRating, deleteRating, getRating, getClientRating };
