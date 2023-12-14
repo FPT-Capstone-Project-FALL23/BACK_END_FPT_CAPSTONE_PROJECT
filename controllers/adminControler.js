@@ -6,7 +6,38 @@ const Organizer = require("../model/organizersModels");
 const PayBusiness = require("../model/payBusinessModel");
 const RefundOrder = require("../model/refundOrderModel");
 const User = require("../model/usersModel");
-const { eventStatistics } = require("./eventController");
+// const { eventStatistics } = require("./eventController");
+
+function eventStatistics(event) {
+    let totalRevenue = 0;
+    let expectedAmount = 0;
+    let totalChairs = 0;
+    let totalSoldChairs = 0;
+    let totalCheckedInChairs = 0;
+
+
+    // Lặp qua tất cả các ngày sự kiện
+    event.event_date.forEach((date) => {
+        // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+        date.event_areas.forEach((area) => {
+            // Lặp qua tất cả dãy ghế (rows) trong khu vực
+            area.rows.forEach((row) => {
+                totalChairs += row.total_chair
+                expectedAmount += row.total_chair * row.ticket_price;
+                // Lặp qua tất cả các ghế (chairs) trong dãy ghế
+                row.chairs.forEach((chair) => {
+                    if (chair.isBuy) {
+                        totalRevenue += row.ticket_price;
+                        totalSoldChairs++;
+                    } if (chair.isCheckin) {
+                        totalCheckedInChairs++;
+                    }
+                });
+            });
+        });
+    });
+    return { totalRevenue, expectedAmount, totalChairs, totalSoldChairs, totalCheckedInChairs };
+}
 
 /*=============================
 ## Name function: getAllClients
@@ -303,7 +334,7 @@ async function getAllEventOfOrganizer(organizerId) {
         const eventList = [];
 
         for (const event of events) {
-            // const statistics = eventStatistics(event);
+            const statistics = eventStatistics(event);
             // console.log("statistics", statistics)
             eventList.push({
                 event_name: event?.event_name,
@@ -315,8 +346,8 @@ async function getAllEventOfOrganizer(organizerId) {
                 isActive: event?.isActive,
                 isHot: event?.isHot,
                 totalRating: event?.totalRating,
-                // expectedAmount: statistics?.expectedAmount,
-                // totalRevenue: statistics?.totalRevenue,
+                expectedAmount: statistics?.expectedAmount,
+                totalRevenue: statistics?.totalRevenue,
                 event_dates: getEventDateInformation(event),
             });
         };

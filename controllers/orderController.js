@@ -307,7 +307,7 @@ async function getMyTicket(req, res) {
         }
 
         // Format the data
-        const formattedData = {
+        const formattedData = [{
             _id: order._id,
             event_id: order.event_id,
             event_name: order.event_name,
@@ -331,7 +331,7 @@ async function getMyTicket(req, res) {
                     }))
                 }
             ]
-        };
+        }];
 
         res.status(200).json({ status: true, data: formattedData });
     } catch (error) {

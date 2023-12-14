@@ -801,7 +801,7 @@ async function getTopRatedEventOfOrganizer(req, res) {
 
         // Truy xuất 5 sự kiện hàng đầu của tổ chức dựa trên tổng Xếp hạng
         const topEvents = await Event.find({
-            organizers_id: organizers_id,
+            organizer_id: organizers_id,
             totalRating: { $gte: 1 },
             "event_date.date": { $lt: currentDate },
         })
@@ -906,5 +906,5 @@ module.exports = {
     selectChairInArea,
     eventStatistics,
     getTopRatedEventOfOrganizer,
-    getLatestHotEventImages
+    getLatestHotEventImages,
 };
