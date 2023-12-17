@@ -232,47 +232,65 @@ async function listIsRefund(req, res) {
         //         }
         //     }
         // });
-        const listRefund = await RefundOrder.find()
+        const listRefund = await RefundOrder.aggregate(
+            [
+                {
+                    $project:
+                    {
+                        _id: 0,
+                        result:
+                        {
+                            $sortArray: { input: "$OrderRefunds", sortBy: { "OrderRefunds.refunded": -1 } }
+                        }
+                    }
+                }
+            ]
+        )
+        // const abc = listIsRefund.map((value) => {
+        //     console.log(value.result)
+        // })
+        // console.log("listRefund", listRefund[0].result)
 
-        if (!listRefund) {
-            return res.status(400).json({
-                status: false,
-                message: 'Dont have any Refund Order',
-            });
-        }
-        let totalRefundAmount = 0;
-        listRefund.forEach((refund) => {
-            refund.OrderRefunds.forEach((orderRefundDetail) => {
-                totalRefundAmount += orderRefundDetail.money_refund;
-            });
-        });
+        // if (!listRefund) {
+        //     return res.status(400).json({
+        //         status: false,
+        //         message: 'Dont have any Refund Order',
+        //     });
+        // }
+        // let totalRefundAmount = 0;
+        // listRefund.forEach((refund) => {
+        //     refund.OrderRefunds.forEach((orderRefundDetail) => {
+        //         totalRefundAmount += orderRefundDetail.money_refund;
+        //     });
+        // });
 
 
-        const results = [];
-        for (const refund of listRefund) {
-            for (const orderRefundDetail of refund.OrderRefunds) {
-                const clientInfo = await getMailOfClient(orderRefundDetail.client_id)
-                const result = {
-                    refund_date: orderRefundDetail.refund_date.toISOString().split('T')[0],
-                    zp_trans_id: orderRefundDetail.zp_trans_id,
-                    event_name: refund.event_name,
-                    money_refund: formatMoney(orderRefundDetail.money_refund),
-                    client_name: clientInfo.fomatInfoClient.full_name,
-                    client_email: clientInfo.fomatInfoClient.email,
-                    numberOfTickets: orderRefundDetail.tickets.length,
-                    _id: orderRefundDetail._id,
-                    refunded: orderRefundDetail.refunded
-                };
-                results.push(result);
-            }
-        }
+        // const results = [];
+        // for (const refund of listRefund) {
+        //     for (const orderRefundDetail of refund.OrderRefunds) {
+        //         const clientInfo = await getMailOfClient(orderRefundDetail.client_id)
+        //         const result = {
+        //             refund_date: orderRefundDetail.refund_date.toISOString().split('T')[0],
+        //             zp_trans_id: orderRefundDetail.zp_trans_id,
+        //             event_name: refund.event_name,
+        //             money_refund: formatMoney(orderRefundDetail.money_refund),
+        //             client_name: clientInfo.fomatInfoClient.full_name,
+        //             client_email: clientInfo.fomatInfoClient.email,
+        //             numberOfTickets: orderRefundDetail.tickets.length,
+        //             _id: orderRefundDetail._id,
+        //             refunded: orderRefundDetail.refunded
+        //         };
+        //         results.push(result);
+        //     }
+        // }
 
         res.status(200).json({
             status: true,
             message: 'success',
             data: {
-                totalRefundAmount: formatMoney(totalRefundAmount),
-                refunds: results
+                // totalRefundAmount: formatMoney(totalRefundAmount),
+                // refunds: results
+                listRefund
             }
         });
     } catch (error) {

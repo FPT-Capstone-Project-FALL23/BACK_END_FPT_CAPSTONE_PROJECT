@@ -284,8 +284,7 @@ async function getEventByType(req, res) {
 ===============================*/
 async function updateEvent(req, res) {
     try {
-        const { _idEvent } = req.body;
-        const { _idOrganizer } = req.body;
+        const { _idOrganizer, _idEvent } = req.body;
         const {
             event_name,
             type_of_event,
@@ -348,9 +347,20 @@ async function updateEvent(req, res) {
         // Lưu sự kiện đã cập nhật
         const updatedEvent = await event.save();
 
+        const order = await Order.findOneAndUpdate(
+            { 'event_id': _idEvent },
+            { $set: { 'event_name': event_name } },
+            { new: true }
+        ).exec();
+        const refundOrder = await RefundOrder.findOneAndUpdate(
+            { 'event_id': _idEvent },
+            { $set: { 'event_name': event_name } },
+            { new: true }
+        ).exec();
+
         res.status(200).json({
             status: true,
-            data: updatedEvent,
+            data: { updatedEvent, order, refundOrder },
             message: 'Cập nhật sự kiện thành công',
         });
     }
@@ -532,7 +542,7 @@ async function listEventOrganizer(req, res) {
     try {
         const { _idOrganizer } = req.body;
         const page = parseInt(req.body.page) || 1; // Trang hiện tại (mặc định là trang 1)
-        const limit = 10; // Số lượng sự kiện hiển thị trên mỗi trang
+        const limit = 5; // Số lượng sự kiện hiển thị trên mỗi trang
         const totalEvents = await Event.countDocuments({ organizer_id: _idOrganizer }); // Tổng số sự kiện trong bảng
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, totalEvents);
 
@@ -576,6 +586,7 @@ async function listEventOrganizer(req, res) {
             data: sortedEvents,
             currentPage: currentPage,
             totalPages: totalPages,
+            totalEvents: totalEvents
         });
     } catch (error) {
         console.error(error);
@@ -919,6 +930,35 @@ async function getEventAreasById(req, res) {
     }
 }
 
+async function getHotActiveEventsWithSales(req, res) {
+    try {
+        const currentDate = new Date();
+
+        // Query for events with the specified criteria
+        const events = await Event.find({
+            isActive: true,
+            'sales_date.start_sales_date': { $lte: currentDate },
+            'sales_date.end_sales_date': { $gte: currentDate }
+        })
+            .limit(3) // Limit the result to 2 events
+            .exec();
+
+        const dataEvent = events.map(event => ({
+            _id: event._id,
+            imageEvent: event.eventImage,
+            nameEvent: event.event_name,
+        }))
+
+        res.status(200).json({
+            status: true,
+            data: dataEvent
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred" });
+    }
+}
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -936,5 +976,6 @@ module.exports = {
     eventStatistics,
     getTopRatedEventOfOrganizer,
     getLatestHotEventImages,
-    getEventAreasById
+    getEventAreasById,
+    getHotActiveEventsWithSales
 };
