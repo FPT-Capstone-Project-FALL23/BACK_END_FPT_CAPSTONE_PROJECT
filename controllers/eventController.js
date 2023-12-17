@@ -864,10 +864,9 @@ async function selectChairInArea(req, res) {
         }
         const selectedDay = event.event_date.find(day => day.day_number === dayNumber);
         const selectedArea = selectedDay.event_areas.find(area => area._id.toString() === _idArea);
-        const selectedChairs = selectedArea.rows.reduce((acc, row) => acc.concat(row.chairs), []);
         res.status(200).json({
             status: true,
-            data: selectedChairs
+            data: selectedArea
         });
     } catch (error) {
         console.error(error);
@@ -884,6 +883,36 @@ async function getLatestHotEventImages(req, res) {
         const eventImages = events.map((event) => event.eventImage);
 
         res.json(eventImages);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred" });
+    }
+}
+
+async function getEventAreasById(req, res) {
+    try {
+        const { areasId } = req.body;
+        const event = await this.findOne({ "event_date.event_areas._id": areasId });
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // Find the matching event area based on the provided _id
+        const eventArea = event.event_date.reduce((foundArea, day) => {
+            const area = day.event_areas.find((area) => area._id.toString() === areasId);
+            return area ? area : foundArea;
+        }, null);
+
+        if (!eventArea) {
+            return res.status(404).json({ message: 'Event area not found' });
+        }
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'success',
+            data: eventArea
+        })
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "An error occurred" });
@@ -907,4 +936,5 @@ module.exports = {
     eventStatistics,
     getTopRatedEventOfOrganizer,
     getLatestHotEventImages,
+    getEventAreasById
 };

@@ -5,6 +5,7 @@ const socketIo = require("socket.io");
 const booking = new Map();
 let roomsState = new Map();
 const roomUsers = new Map();
+const dataEvent_areas = new Map();
 
 let onlineUsers = [];
 const offlineNotifications = {};
@@ -30,7 +31,9 @@ io.on("connection", (socket) => {
     console.log(roomUsers);
     try {
       const eventRowKey = data.eventRowKey;
+      console.log("eventRowKey", eventRowKey)
       let eventRowKeySeats = roomsState.get(eventRowKey);
+      console.log("roomsState", roomsState)
       if (!eventRowKeySeats) {
         roomsState.set(eventRowKey, []);
         eventRowKeySeats = [];
@@ -40,6 +43,7 @@ io.on("connection", (socket) => {
       roomsState.set(eventRowKey, [...eventRowKeySeats, { ...data, email }]);
       console.log(roomsState.get(eventRowKey));
       const room = roomUsers.get(email);
+      console.log("room", room)
       socket.to(room).emit("update_booking_room", roomsState.get(eventRowKey));
     } catch (error) {
       console.error(error);
@@ -69,6 +73,30 @@ io.on("connection", (socket) => {
       console.error(error);
     }
   });
+
+  //3. Đóng dialog
+  socket.on("CLOSE_DIALOG", (data) => {
+    console.log(roomUsers)
+    try {
+      const eventRowKey = data.eventRowKey;
+      console.log("eventRowKey", eventRowKey)
+      let eventRowKeySeats = dataEvent_areas.get(eventRowKey);
+      console.log("roomsState", dataEvent_areas)
+      if (!eventRowKeySeats) {
+        dataEvent_areas.set(eventRowKey, []);
+        eventRowKeySeats = [];
+      }
+      if (eventRowKeySeats.includes({ ...data, email }))
+        throw new Error("This seat is selected!");
+      dataEvent_areas.set(eventRowKey, [...eventRowKeySeats, { ...data, email }]);
+      console.log(dataEvent_areas.get(eventRowKey));
+      const room = roomUsers.get(email);
+      console.log("room", room)
+      socket.to(room).emit("before_close_dailog", dataEvent_areas.get(eventRowKey));
+    } catch (error) {
+      console.error(error);
+    }
+  })
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${email}`);

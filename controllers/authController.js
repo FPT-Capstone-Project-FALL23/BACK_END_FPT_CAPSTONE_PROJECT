@@ -466,7 +466,7 @@ async function updateClient(req, res) {
 async function createOrganizer(req, res) {
     try {
         const { _idUser, avatarImage } = req.body;
-        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address, bankCard, bankCardNumber, bankCardName } = req.body.organizerInfo;
 
         const isExists = await checkExistsIdUser(_idUser);
 
@@ -508,7 +508,10 @@ async function createOrganizer(req, res) {
             founded_date: founded_date,
             isActive: isActive,
             description: description,
-            address: address
+            address: address,
+            bankCard: bankCard,
+            bankCardNumber: bankCardNumber,
+            bankCardName: bankCardName
         });
 
         res.status(200).json({
@@ -532,7 +535,7 @@ async function createOrganizer(req, res) {
 async function updateOrganizer(req, res) {
     try {
         const { _idOrganizer, avatarImage } = req.body;
-        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address } = req.body.organizerInfo;
+        const { organizer_name, organizer_type, phone, website, founded_date, isActive, description, address, bankCard, bankCardNumber, bankCardName } = req.body.organizerInfo;
 
         // Kiểm tra sự tồn tại của organizer
         const organizer = await Organizer.findById(_idOrganizer);
@@ -561,6 +564,9 @@ async function updateOrganizer(req, res) {
         organizer.isActive = isActive;
         organizer.description = description;
         organizer.address = address;
+        organizer.bankCard = bankCard;
+        organizer.bankCardNumber = bankCardNumber;
+        organizer.bankCardName = bankCardName;
 
         // Lưu organizer đã cập nhật
         const updateOrganizer = await organizer.save();

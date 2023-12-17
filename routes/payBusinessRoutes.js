@@ -1,10 +1,10 @@
-const { createPayBusinessOfEvent, getPayBusinessWithRequest, getPayBusinessWithOrganizers, calculateTotalAmountAndTransactionNumber } = require("../controllers/payBusinessController");
+const { createPayBusinessOfEvent, getPayBusinessWithRequest, getPayBusinessWithOrganizers, setIsPayForOrganizers } = require("../controllers/payBusinessController");
 
 const payBusinessRouter = require("express").Router();
 
 payBusinessRouter.post("/createPayBusinessOfEvent", createPayBusinessOfEvent)
-payBusinessRouter.get("/getPayBusinessWithRequest", getPayBusinessWithRequest)
+payBusinessRouter.post("/getPayBusinessWithRequest", getPayBusinessWithRequest)
 payBusinessRouter.post("/getPayBusinessWithOrganizers", getPayBusinessWithOrganizers)
-payBusinessRouter.get("/calculateTotalAmountAndTransactionNumber", calculateTotalAmountAndTransactionNumber)
+payBusinessRouter.post("/setIsPayForOrganizers", setIsPayForOrganizers)
 
 module.exports = payBusinessRouter

@@ -21,6 +21,9 @@ const organizerSchema = new mongoose.Schema({
         ward: { type: String },
         specific_address: { type: String },
     },
+    bankCard: { type: String },
+    bankCardNumber: { type: Number },
+    bankCardName: { type: String }
 });
 
 // Create the organizer model

@@ -907,6 +907,9 @@ async function getAllOrders(req, res) {
             });
             totalTickets += order.Orders.length;
         });
+        
+
+        // const { totalRevenue, expectedAmount, totalChairs, totalSoldChairs, totalCheckedInChairs } = eventStatistics();
 
         const { totalPages, currentPage, eventsWithOrdersCount, eventsWithTotalTransactions } = await getAllEventsWithOrders(page);
 
