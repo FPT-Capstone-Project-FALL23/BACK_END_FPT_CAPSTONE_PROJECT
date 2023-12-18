@@ -8,6 +8,9 @@ const { checkZaloPayment } = require('../zalopay/payment');
 const { htmlTicket } = require("../config/constHTML");
 const { sendTicketByEmail } = require("../controllers/emailController");
 const { formatDate } = require("../controllers/adminControler");
+const io = require("socket.io")();
+const {roomsState} = require("../controllers/notificationNewEvent");
+
 
 /*=============================
 ## Name function: writeIdClientToChair
@@ -148,12 +151,17 @@ async function createTicket(req, res) {
             zp_trans_id: zp_trans_id,
             tickets: tickets,
         }
-
+        
+        io.emit("update_booking_room", roomsState.get(room));
         order.Orders.push(orderDetailData);
 
-        await order.save();
+        
 
+        await order.save();
+        
+        
         await sendTicketByEmail(email, client, buffers);
+        
         // Đóng trình duyệt
         await browser.close();
         res.status(200).json({ status: true, message: 'Tickets created and sent successfully.' });

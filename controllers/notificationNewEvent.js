@@ -192,3 +192,9 @@ const removeUser = (socketId) => {
 server.listen(5000, () => {
   console.log("Socket io is running on port 5000");
 });
+
+module.exports = {
+  io,
+  roomsState,
+  
+};
