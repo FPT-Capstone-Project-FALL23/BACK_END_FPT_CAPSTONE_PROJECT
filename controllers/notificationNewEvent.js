@@ -31,9 +31,7 @@ io.on("connection", (socket) => {
     console.log(roomUsers);
     try {
       const eventRowKey = data.eventRowKey;
-      console.log("eventRowKey", eventRowKey)
       let eventRowKeySeats = roomsState.get(eventRowKey);
-      console.log("roomsState", roomsState)
       if (!eventRowKeySeats) {
         roomsState.set(eventRowKey, []);
         eventRowKeySeats = [];
@@ -43,7 +41,6 @@ io.on("connection", (socket) => {
       roomsState.set(eventRowKey, [...eventRowKeySeats, { ...data, email }]);
       console.log(roomsState.get(eventRowKey));
       const room = roomUsers.get(email);
-      console.log("room", room)
       socket.to(room).emit("update_booking_room", roomsState.get(eventRowKey));
     } catch (error) {
       console.error(error);
@@ -159,12 +156,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("new_event", ({ senderName, receiverName }) => {
+  socket.on("organizerToAdmin", ({ typeOfNotification, senderName, receiverName }) => {
     const receiver = getUser(receiverName);
 
-    //to(receiver.socketId)
     if (receiver) {
-      io.emit("getNotification", { senderName });
+      io.emit("getNotification", { senderName, typeOfNotification });
     } else {
       console.log(`User ${receiverName} not found`);
       // Thêm thông báo vào danh sách thông báo chưa đăng nhập
