@@ -20,6 +20,8 @@ const { getAllClients,
     getTransactionInformation,
     getTopRatedEvents,
     getHomeAdmin,
+    rejectedOrganizer,
+    rejectedEvent
 } = require("../controllers/adminControler");
 
 const adminRouter = require("express").Router();
@@ -41,6 +43,7 @@ adminRouter.post("/blockedUser", blockedUser)
 adminRouter.post("/getInformationEvent", getInformationEvent)
 adminRouter.post("/getTransactionInformation", getTransactionInformation)
 adminRouter.get("/getTopRatedEvents", getTopRatedEvents)
-
+adminRouter.post("/rejectedOrganizer", rejectedOrganizer)
+adminRouter.post("/rejectedEvent", rejectedEvent)
 
 module.exports = adminRouter

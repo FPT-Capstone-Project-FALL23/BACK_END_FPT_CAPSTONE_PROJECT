@@ -6,7 +6,7 @@ const qs = require('qs');
 
 function createZaloPayOrder(describe, amount) {
     const embed_data = {
-        redirectUrl: "http://localhost:3000/payment_completed"
+        redirectUrl: "https://fpt-tikseat.vercel.app/payment_completed"
     };
 
     const items = [{}];
@@ -22,7 +22,7 @@ function createZaloPayOrder(describe, amount) {
         amount: amount,
         description: describe,
         bank_code: "zalopayapp",
-        callback_url: "https://e959-2402-800-629c-ea57-9d73-509a-d6b9-b76b.ngrok-free.app/api/order/callback",
+        callback_url: "https://fpt-tikseat.vercel.app/api/order/callback",
     };
 
     const data = config.appid + "|" + order.app_trans_id + "|" + order.app_user + "|" + order.amount + "|" + order.app_time + "|" + order.embed_data + "|" + order.item;
