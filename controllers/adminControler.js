@@ -1,4 +1,4 @@
-const { sendEmailActiveOrganizer, sendEmailActiveEvent } = require("../controllers/emailController");
+const { sendEmailActiveOrganizer, sendEmailActiveEvent, sendEmailRejectOrganizer, sendEmailRejectEvent } = require("../controllers/emailController");
 const Client = require("../model/clientsModel");
 const Event = require("../model/eventModels");
 const Order = require("../model/orderModel");
@@ -441,7 +441,7 @@ async function setIsActiveOrganizer(req, res) {
             });
         }
         const email = user.email;
-        await sendEmailActiveOrganizer(email);
+        await sendEmailActiveOrganizer(email, organizer);
 
         await PayBusiness.create({
             organizers_id: organizer._id,
@@ -452,6 +452,43 @@ async function setIsActiveOrganizer(req, res) {
         res.status(200).json({
             status: true,
             message: 'success',
+            data: organizer
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+/*=============================
+## Name function: rejectedOrganizer
+## Describe: rejected Organizer
+## Params: _idUser
+## Result: status, message, data
+===============================*/
+async function rejectedOrganizer(req, res) {
+    try {
+        const { _idUser } = req.body;
+        const organizer = await Organizer.findOneAndDelete({ user_id: _idUser });
+
+        if (!organizer) {
+            return res.status(404).json({ error: 'Organizer not found' });
+        }
+
+        const user = await User.findOneAndDelete({ _id: _idUser });
+        if (!user) {
+            return res.status(400).json({
+                status: false,
+                message: 'User does not exist',
+            });
+        }
+
+        const email = user.email;
+        await sendEmailRejectOrganizer(email, organizer);
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'Organizer rejected successfully',
             data: organizer
         });
     } catch (error) {
@@ -570,6 +607,50 @@ async function setIsActiveEvent(req, res) {
             status: true,
             message: 'success',
             data: event
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+    }
+}
+
+/*=============================
+## Name function: rejectedEvent
+## Describe: rejected Event
+## Params: _idUser
+## Result: status, message, data
+===============================*/
+async function rejectedEvent(req, res) {
+    try {
+        const { _idEvent } = req.body;
+        const event = await Event.findByIdAndDelete(_idEvent)
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const _idOrganizer = event.organizer_id;
+        const organizer = await Organizer.findById(_idOrganizer);
+        if (!organizer) {
+            return res.status(400).json({
+                status: false,
+                message: 'Organizer does not exist',
+            });
+        }
+        const _idUser = organizer.user_id;
+        const user = await User.findById(_idUser);
+        if (!user) {
+            return res.status(400).json({
+                status: false,
+                message: 'User does not exist',
+            });
+        }
+        const email = user.email;
+        await sendEmailRejectEvent(email, organizer, event);
+
+        // Xử lý khi thành công
+        res.status(200).json({
+            status: true,
+            message: 'Organizer rejected successfully',
+            data: organizer
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred' });
@@ -907,7 +988,7 @@ async function getAllOrders(req, res) {
             });
             totalTickets += order.Orders.length;
         });
-        
+
 
         // const { totalRevenue, expectedAmount, totalChairs, totalSoldChairs, totalCheckedInChairs } = eventStatistics();
 
@@ -1188,6 +1269,7 @@ module.exports = {
     getDetailOrganizer,
     getAllOrganizerBlockeds,
     setIsActiveOrganizer,
+    rejectedOrganizer,
     setIsActiveEvent,
     setIsHotEvent,
     getAllOrganizersIsActiveFalse,
@@ -1204,5 +1286,6 @@ module.exports = {
     getInformationEvent,
     getTransactionInformation,
     getTopRatedEvents,
-    calculatePaginationParams
+    calculatePaginationParams,
+    rejectedEvent
 }

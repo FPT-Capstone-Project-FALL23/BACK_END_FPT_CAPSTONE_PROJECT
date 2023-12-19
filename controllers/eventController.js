@@ -170,7 +170,14 @@ async function getAllEvents(req, res) {
             .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
-
+        for (const event of events) {
+            const eventStatus = getEventStatus(event);
+            event.eventStatus = eventStatus;
+        }
+        events.sort((a, b) => {
+            const sort = { "HAPPENNING": 1, "UPCOMING": 2, "FINISHED": 3 };
+            return sort[a.eventStatus] - sort[b.eventStatus];
+        });
         res.status(200).json({
             events,
             message: `Có ${totalEvents} sự kiện đã tìm thấy`,
@@ -313,54 +320,103 @@ async function updateEvent(req, res) {
                 message: 'Bạn không có quyền chỉnh sửa sự kiện này',
             });
         }
+        const currentDate = new Date();
+        if (sales_date.start_sales_date > currentDate) {
+            console.log("date:", currentDate);
+            //up ảnh bìa sự kiện
+            let urlImageEvent;
+            if (!eventImage) {
+                urlImageEvent = event.IMG_EVENT;
+            }
+            else {
+                const dataImgAfterUpload = upLoadImg(eventImage, "ImgEvent");
+                urlImageEvent = (await dataImgAfterUpload).urlImage;
+            }
+            //up ảnh khán đài
+            let urlImageStand;
+            if (!type_layout) {
+                urlImageStand = event.type_layout;
+            }
+            else {
+                const dataImgAfterUpload = upLoadImg(type_layout, "ImgStand");
+                urlImageStand = (await dataImgAfterUpload).urlImage;
+            }
+            // Cập nhật thông tin sự kiện
+            event.event_name = event_name;
+            event.type_of_event = type_of_event;
+            event.eventImage = urlImageEvent;
+            event.type_layout = urlImageStand;
+            event.maxTicketInOrder = maxTicketInOrder;
+            event.event_date = generateEventDate(event_date);
+            event.event_location = event_location;
+            event.event_description = event_description;
+            event.sales_date = sales_date;
+            event.isActive = isActive;
+            event.isHot = isHot;
+            // Lưu sự kiện đã cập nhật
+            /* const updatedEvent =  */await event.save();
 
-        //up ảnh bìa sự kiện
-        let urlImageEvent;
-        if (!eventImage) {
-            urlImageEvent = event.IMG_EVENT;
+            /* const order =  */await Order.findOneAndUpdate(
+                { 'event_id': _idEvent },
+                { $set: { 'event_name': event_name } },
+                { new: true }
+            ).exec();
+            /* const refundOrder =  */await RefundOrder.findOneAndUpdate(
+                { 'event_id': _idEvent },
+                { $set: { 'event_name': event_name } },
+                { new: true }
+            ).exec();
         }
         else {
-            const dataImgAfterUpload = upLoadImg(eventImage, "ImgEvent");
-            urlImageEvent = (await dataImgAfterUpload).urlImage;
-        }
-        //up ảnh khán đài
-        let urlImageStand;
-        if (!type_layout) {
-            urlImageStand = event.type_layout;
-        }
-        else {
-            const dataImgAfterUpload = upLoadImg(type_layout, "ImgStand");
-            urlImageStand = (await dataImgAfterUpload).urlImage;
-        }
-        // Cập nhật thông tin sự kiện
-        event.event_name = event_name;
-        event.type_of_event = type_of_event;
-        event.eventImage = urlImageEvent;
-        event.type_layout = urlImageStand;
-        event.maxTicketInOrder = maxTicketInOrder;
-        event.event_date = generateEventDate(event_date);
-        event.event_location = event_location;
-        event.event_description = event_description;
-        event.sales_date = sales_date;
-        event.isActive = isActive;
-        event.isHot = isHot;
-        // Lưu sự kiện đã cập nhật
-        const updatedEvent = await event.save();
+            let listIdClients = [];
+            let dateDB = null;
+            for (let i = 0; i < event.event_date.length; i++) {
+                const dateUpdate = event_date[i];
+                console.log("object1", dateUpdate);
+                console.log("object2", dateUpdate.dateEvent);
+                event.event_date.forEach((date) => {
+                    dateDB = date.date;
+                    console.log("object3", dateDB);
+                    date.event_areas.forEach((area) => {
+                        // Lặp qua tất cả dãy ghế (rows) trong khu vực
+                        area.rows.forEach((row) => {
+                            row.chairs.forEach((chair) => {
+                                if (chair.isBuy) {
+                                    const clientId = chair.client_id.toString();
+                                    listIdClients.push(clientId);
+                                }
+                            });
+                        });
+                    });
+                });
 
-        const order = await Order.findOneAndUpdate(
-            { 'event_id': _idEvent },
-            { $set: { 'event_name': event_name } },
-            { new: true }
-        ).exec();
-        const refundOrder = await RefundOrder.findOneAndUpdate(
-            { 'event_id': _idEvent },
-            { $set: { 'event_name': event_name } },
-            { new: true }
-        ).exec();
+                await Event.findOneAndUpdate(
+                    {
+                        '_id': _idEvent,
+                        'event_date': {
+                            $elemMatch: {
+                                'date': new Date(dateDB)
+                            }
+                        }
+                    },
+                    {
+                        $set: {
+                            'event_date.$.date': new Date(dateUpdate.dateEvent),
+                            // 'isActive': false,
+                        }
+                    },
+                    { new: true }
+                ).exec();
+
+            }
+            
+            const uniqueClientIdArray = Array.from(new Set(listIdClients));;
+            console.log("id", uniqueClientIdArray);
+        }
 
         res.status(200).json({
             status: true,
-            data: { updatedEvent, order, refundOrder },
+            // data: { updatedEvent, order, refundOrder },
             message: 'Cập nhật sự kiện thành công',
         });
     }
@@ -421,7 +477,14 @@ async function searchEvent(req, res) {
             .sort({ isHot: -1, 'event_date.date': 1 })
             .skip(skip)
             .limit(limit);
-
+        for (const event of events) {
+            const eventStatus = getEventStatus(event);
+            event.eventStatus = eventStatus;
+        }
+        events.sort((a, b) => {
+            const sort = { "HAPPENNING": 1, "UPCOMING": 2, "FINISHED": 3 };
+            return sort[a.eventStatus] - sort[b.eventStatus];
+        });
         res.status(200).json({
             status: true,
             data: events,

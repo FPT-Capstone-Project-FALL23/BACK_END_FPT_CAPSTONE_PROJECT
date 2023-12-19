@@ -1,7 +1,7 @@
 const { generateOTP } = require('./otpController');
 const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
 const User = require('../model/usersModel');
-const { htmlMailActiveEvent, htmlMailActiveOrganizer, htmlOTP, htmlsendTicketByEmail } = require("../config/constHTML");
+const { htmlMailActiveEvent, htmlMailActiveOrganizer, htmlOTP, htmlsendTicketByEmail, htmlMailRejectOrganizer, htmlMailRejectEvent } = require("../config/constHTML");
 
 // Lưu trữ OTP được tạo và thời gian hết hạn
 const otpStorage = {};
@@ -172,12 +172,30 @@ async function verifileOTPRegister(req, res) {
 ## Params: email
 ## Result: none
 ===============================*/
-async function sendEmailActiveOrganizer(email) {
-    const htmlActive = htmlMailActiveOrganizer(email)
+async function sendEmailActiveOrganizer(email, organizer) {
+    const htmlActive = htmlMailActiveOrganizer(organizer)
     const mailOptions = {
         from: AUTH_EMAIL,
         to: email,
         subject: 'TIKSEAT: ACCOUNT HAS BEEN ACTIVATED',
+        html: htmlActive,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
+/*=============================
+## Name function: sendEmailRejectOrganizer
+## Describe: Gửi mail cho tổ chức khi bị từ chối
+## Params: email
+## Result: none
+===============================*/
+async function sendEmailRejectOrganizer(email, organizer) {
+    const htmlActive = htmlMailRejectOrganizer(organizer)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: email,
+        subject: 'TIKSEAT: ACCOUNT HAS BEEN REJECT',
         html: htmlActive,
     };
     // Gửi email
@@ -196,6 +214,24 @@ async function sendEmailActiveEvent(email, organizer, event) {
         from: AUTH_EMAIL,
         to: email,
         subject: 'TIKSEAT: EVENT HAS BEEN ACTIVATED',
+        html: htmlEmail,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
+/*=============================
+## Name function: sendEmailRejectEvent
+## Describe: Gửi mail cho tổ chức khi bị từ chối event
+## Params: email, organizer, event
+## Result: none
+===============================*/
+async function sendEmailRejectEvent(email, organizer, event) {
+    const htmlEmail = htmlMailRejectEvent(organizer, event)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: email,
+        subject: 'TIKSEAT: EVENT HAS BEEN REJECTED',
         html: htmlEmail,
     };
     // Gửi email
@@ -228,5 +264,5 @@ async function sendTicketByEmail(email, client, buffers) {
 }
 module.exports = {
     sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister, resendOTPForMail,
-    sendEmailActiveOrganizer, sendEmailActiveEvent, sendTicketByEmail
+    sendEmailActiveOrganizer, sendEmailActiveEvent, sendTicketByEmail, sendEmailRejectOrganizer, sendEmailRejectEvent
 };
