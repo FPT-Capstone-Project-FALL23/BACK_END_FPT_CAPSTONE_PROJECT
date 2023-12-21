@@ -23,7 +23,8 @@ const organizerSchema = new mongoose.Schema({
     },
     bankCard: { type: String },
     bankCardNumber: { type: Number },
-    bankCardName: { type: String }
+    bankCardName: { type: String },
+    create_date: { type: Date, default: Date.now },
 });
 
 // Create the organizer model

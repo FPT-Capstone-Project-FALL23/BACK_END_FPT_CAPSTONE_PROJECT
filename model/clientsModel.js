@@ -28,7 +28,8 @@ const clientSchema = new mongoose.Schema({
     gender: { type: String },
     avatarImage: { type: String },
     purchased_tickets: [ticketSchema],
-    favorit_enres: { type: [String], }
+    favorit_enres: { type: [String], },
+    create_date: { type: Date, default: Date.now },
 });
 
 // Create the Client model

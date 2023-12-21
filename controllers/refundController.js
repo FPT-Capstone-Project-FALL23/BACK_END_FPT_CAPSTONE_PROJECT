@@ -241,28 +241,10 @@ async function acceptRefund(req, res) {
 
 async function listIsRefund(req, res) {
     try {
-        const { page } = req.body;
+        // const { page } = req.body;
         // const listRefund = await RefundOrder.find({ 'OrderRefunds.isRefund': true, 'OrderRefunds.refunded': false });
 
         const listRefund = await RefundOrder.find();
-        // const listRefund = await RefundOrder.aggregate(
-        //     [
-        //         {
-        //             $project:
-        //             {
-        //                 _id: 0,
-        //                 result:
-        //                 {
-        //                     $sortArray: { input: "$OrderRefunds", sortBy: { "OrderRefunds.refunded": -1 } }
-        //                 }
-        //             }
-        //         }
-        //     ]
-        // )
-        // const abc = listIsRefund.map((value) => {
-        //     console.log(value.result)
-        // })
-        // console.log("listRefund", listRefund[0].result)
 
         if (!listRefund) {
             return res.status(400).json({
@@ -298,7 +280,6 @@ async function listIsRefund(req, res) {
         }
 
         const limit = 5;
-        const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, results.length);
         results.sort((a, b) => {
             if (a.refunded === b.refunded) {
                 const aPaymentDate = new Date(a.refund_date);
@@ -306,7 +287,7 @@ async function listIsRefund(req, res) {
                 return aPaymentDate - bPaymentDate;
             }
             return a.refunded ? 1 : -1;
-        }).slice(skip, skip + limit);
+        })
 
         res.status(200).json({
             status: true,

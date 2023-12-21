@@ -5,7 +5,7 @@ refundRouter.post("/createRefund", createRefund)
 refundRouter.post("/getListRefund", getListRefund)
 refundRouter.post("/acceptRefund", acceptRefund)
 refundRouter.post("/refundMoney", refundMoney)
-refundRouter.post("/listIsRefund", listIsRefund)
+refundRouter.get("/listIsRefund", listIsRefund)
 refundRouter.post("/requestRefundMoney", requestRefundMoney)
 
 module.exports = refundRouter

@@ -54,7 +54,7 @@ async function getAllClients(req, res) {
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, clientsCount);
 
         const clients = await User.find({ role: 'client' }, 'email password')
-            .sort({ registration_date: -1 })
+            .sort({ create_date: -1 })
             .skip(skip)
             .limit(limit)
             .exec();
@@ -119,11 +119,15 @@ async function blockedUser(req, res) {
             { $set: { isBlocked: !isBlocked } },
             { new: true }
         );
+        const organization = await Organizer.findOneAndUpdate({ organizer_id: user._id },
+            { $set: { isActive: !isBlocked } },
+            { new: true })
+        
         //user.isBlocked = !user.isBlocked;
         res.status(200).json({
             status: true,
             message: 'success',
-            data: user
+            data: { user, organization }
         });
     } catch (error) {
         console.error(error);
@@ -207,11 +211,11 @@ async function getDetailClient(req, res) {
 async function getAllOrganizers(req, res) {
     try {
         const { page } = req.body;
-        const organizersCount = await User.countDocuments({ role: 'organizer' });
+        const organizersCount = await Organizer.countDocuments({ isActive: true });
         const limit = 5; // Number of clients per page
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, organizersCount);
 
-        const organizersInfo = await Organizer.find({ isActive: true }).sort({ registration_date: -1 })
+        const organizersInfo = await Organizer.find({ isActive: true }).sort({ create_date: -1 })
             .skip(skip)
             .limit(limit)
             .exec();;
@@ -702,7 +706,7 @@ async function getAllOrganizersIsActiveFalse(req, res) {
         const limit = 5; // Number of clients per page
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, organizersCount);
 
-        const organizers = await User.find({ _id: { $in: organizersIds } }, 'email').skip(skip)
+        const organizers = await User.find({ _id: { $in: organizersIds } }, 'email').sort({ create_date: -1 }).skip(skip)
             .limit(limit)
             .exec();
 
@@ -731,6 +735,7 @@ async function getAllOrganizersIsActiveFalse(req, res) {
             address: getAddressString(organizer.additionalInfo?.address),
             organizer_type: organizer.additionalInfo?.organizer_type,
             description: organizer.additionalInfo?.description,
+            accept: organizer.additionalInfo?.isActive
         }));
 
         // Handle success
@@ -782,7 +787,7 @@ async function getAllEventIsActiveFalse(req, res) {
         const limit = 5; // Number of clients per page
         const { totalPages, skip, currentPage } = calculatePaginationParams(page, limit, eventsCount);
         // Find all events with isActive set to false
-        const events = await Event.find({ isActive: false }).populate('organizer_id', 'organizer_name').skip(skip)
+        const events = await Event.find({ isActive: false }).sort({ create_date: -1 }).populate('organizer_id', 'organizer_name').skip(skip)
             .limit(limit)
             .exec();
 
@@ -792,6 +797,7 @@ async function getAllEventIsActiveFalse(req, res) {
             organizer_name: event.organizer_id.organizer_name,
             type_of_event: event.type_of_event,
             event_location: getAddressString(event.event_location),
+            date: event.create_date
         }))
         // Handle success
         res.status(200).json({
