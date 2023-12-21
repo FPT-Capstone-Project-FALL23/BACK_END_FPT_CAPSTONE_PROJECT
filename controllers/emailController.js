@@ -1,7 +1,7 @@
 const { generateOTP } = require('./otpController');
 const { sendMailToUser, AUTH_EMAIL } = require('./sendEmail');
 const User = require('../model/usersModel');
-const { htmlMailActiveEvent, htmlMailActiveOrganizer, htmlOTP, htmlsendTicketByEmail, htmlMailRejectOrganizer, htmlMailRejectEvent } = require("../config/constHTML");
+const { htmlMailActiveEvent, htmlMailActiveOrganizer, htmlOTP, htmlsendTicketByEmail, htmlMailRejectOrganizer, htmlMailRejectEvent, htmlMailRequestRefundMoney, htmlMailNoticeChangeEventDate } = require("../config/constHTML");
 
 // Lưu trữ OTP được tạo và thời gian hết hạn
 const otpStorage = {};
@@ -250,7 +250,7 @@ async function sendTicketByEmail(email, client, buffers) {
     const mailOptions = {
         from: AUTH_EMAIL,
         to: email,
-        subject: 'TIKSEAT: MUA VÉ THÀNH CÔNG',
+        subject: 'TIKSEAT: PURCHASE OF TICKETS SUCCESSFULLY',
         html: htmlEmail,
         attachments: buffers.map((pdf, index) => ({
             filename: `TIKSEAT_ticket_${index + 1}.pdf`,
@@ -262,7 +262,51 @@ async function sendTicketByEmail(email, client, buffers) {
     // Gửi email
     sendMailToUser(mailOptions)
 }
+
+/*=============================
+## Name function: sendEmailRequestRefundMoney
+## Describe: Gửi mail cho tổ chức khi client gửi request chưa nhận tiền
+## Params: email
+## Result: none
+===============================*/
+async function sendEmailRequestRefundMoney(emailClient, emailOrganizer, organizer_name, event) {
+    // console.log("emailClient", emailClient);
+    // console.log("emailOrganizer", emailOrganizer);
+    // console.log("event", event.event_name);
+    const htmlActive = htmlMailRequestRefundMoney(emailClient, organizer_name, event)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: emailOrganizer,
+        cc: emailClient,
+        subject: 'TIKSEAT: REFUND NOT RECEIVED',
+        html: htmlActive,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
+/*=============================
+## Name function: sendEmailRequestRefundMoney
+## Describe: Gửi mail cho tổ chức khi client gửi request chưa nhận tiền
+## Params: email
+## Result: none
+===============================*/
+async function sendEmailNoticeChangeEventDate(emailClient, event, dateEvent) {
+
+    const htmlActive = htmlMailNoticeChangeEventDate(emailClient, event, dateEvent)
+    const mailOptions = {
+        from: AUTH_EMAIL,
+        to: emailClient,
+        // cc: emailClient,
+        subject: 'TIKSEAT: CHANGE IN EVENT DATE',
+        html: htmlActive,
+    };
+    // Gửi email
+    sendMailToUser(mailOptions)
+}
+
 module.exports = {
     sendOTPForMailRegister, sendOTPForResetPassword, verifileOTPRegister, resendOTPForMail,
-    sendEmailActiveOrganizer, sendEmailActiveEvent, sendTicketByEmail, sendEmailRejectOrganizer, sendEmailRejectEvent
+    sendEmailActiveOrganizer, sendEmailActiveEvent, sendTicketByEmail, sendEmailRejectOrganizer,
+    sendEmailRejectEvent, sendEmailRequestRefundMoney, sendEmailNoticeChangeEventDate
 };

@@ -12,6 +12,35 @@ async function createQRcode(req, res) {
         const { _idEvent, chairIds, amount } = req.body;
 
         const event = await Event.findById(_idEvent);
+
+        let listChairPurchased = []
+        //Ham kiem tra da mua
+        event.event_date.forEach((date) => {
+            // Lặp qua tất cả khu vực (areas) trong ngày sự kiện
+            date.event_areas.forEach((area) => {
+                // Lặp qua tất cả dãy ghế (rows) trong khu vực
+                area.rows.forEach((row) => {
+                    // Lặp qua tất cả các ghế (chairs) trong dãy ghế
+                    row.chairs.forEach((chair) => {
+                        chairIds.forEach((chaId) => {
+                            if (chair.id == chaId && chair.isBuy) {
+                                listChairPurchased.push(chair.chair_name)
+                            }
+                        })
+                    });
+                });
+            });
+        });
+
+        console.log("listChairPurchased", listChairPurchased.length);
+
+        if(listChairPurchased.length > 0){
+            return res.status(200).json({
+                status: false,
+                message: ` ${listChairPurchased} The chair you selected has been purchased. Please click reload to review the latest status`,
+            });
+        }
+
         // Kiểm tra số lượng vé trong đơn hàng
         const maxTicketInOrder = event.maxTicketInOrder;
         if (maxTicketInOrder !== null && chairIds.length > maxTicketInOrder) {
@@ -25,7 +54,10 @@ async function createQRcode(req, res) {
 
         const describe = `Thanh toán ${chairIds.length} vé cho sự kiện ${event.event_name}`;
         const response = await createZaloPayOrder(describe, amount);
-        return res.json({ data: response.data })
+        return res.json({ 
+            status: true,
+            data: response.data 
+        })
     } catch (error) {
         console.error(error);
         res.status(500).send('An error occurred');

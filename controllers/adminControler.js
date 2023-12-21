@@ -468,13 +468,13 @@ async function setIsActiveOrganizer(req, res) {
 async function rejectedOrganizer(req, res) {
     try {
         const { _idUser } = req.body;
-        const organizer = await Organizer.findOneAndDelete({ user_id: _idUser });
+        const organizer = await Organizer.find({ user_id: _idUser });
 
         if (!organizer) {
             return res.status(404).json({ error: 'Organizer not found' });
         }
 
-        const user = await User.findOneAndDelete({ _id: _idUser });
+        const user = await User.find({ _id: _idUser });
         if (!user) {
             return res.status(400).json({
                 status: false,
@@ -622,7 +622,7 @@ async function setIsActiveEvent(req, res) {
 async function rejectedEvent(req, res) {
     try {
         const { _idEvent } = req.body;
-        const event = await Event.findByIdAndDelete(_idEvent)
+        const event = await Event.findById(_idEvent)
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
