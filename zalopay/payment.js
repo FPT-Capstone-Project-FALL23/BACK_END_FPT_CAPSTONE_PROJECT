@@ -3,10 +3,12 @@ const CryptoJS = require('crypto-js');
 const moment = require('moment');
 const config = require("../config/zalopay");
 const qs = require('qs');
+const urlWeb = "http://fpt-tikseat.vercel.app/payment_completed"
+// const urlWeb = "http://localhost:3000/payment_completed"
 
 function createZaloPayOrder(describe, amount) {
     const embed_data = {
-        redirectUrl: "http://localhost:3000/payment_completed"
+        redirectUrl: urlWeb
     };
 
     const items = [{}];
