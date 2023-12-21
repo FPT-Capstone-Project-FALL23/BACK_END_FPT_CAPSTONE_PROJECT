@@ -4,6 +4,7 @@ const Client = require('../model/clientsModel');
 const Order = require('../model/orderModel');
 const { formatDate, formatDateTime, getMailOfClient } = require('./adminControler');
 const RefundOrder = require('../model/refundOrderModel');
+const Organizer = require('../model/organizersModels');
 
 async function createQRcode(req, res) {
     try {
@@ -34,7 +35,7 @@ async function createQRcode(req, res) {
 
         console.log("listChairPurchased", listChairPurchased.length);
 
-        if(listChairPurchased.length > 0){
+        if (listChairPurchased.length > 0) {
             return res.status(200).json({
                 status: false,
                 message: ` ${listChairPurchased} The chair you selected has been purchased. Please click reload to review the latest status`,
@@ -46,7 +47,7 @@ async function createQRcode(req, res) {
         if (maxTicketInOrder !== null && chairIds.length > maxTicketInOrder) {
             return res.status(400).json({
                 status: false,
-                message: `Bạn chỉ có thể mua tối đa ${maxTicketInOrder} vé trong một đơn hàng`,
+                message: `You can only purchase a maximum of ${maxTicketInOrder} tickets in one order`,
             });
         }
         //const ticket = createTicket(_idClient, email, event, chairIds);
@@ -54,9 +55,9 @@ async function createQRcode(req, res) {
 
         const describe = `Thanh toán ${chairIds.length} vé cho sự kiện ${event.event_name}`;
         const response = await createZaloPayOrder(describe, amount);
-        return res.json({ 
+        return res.json({
             status: true,
-            data: response.data 
+            data: response.data
         })
     } catch (error) {
         console.error(error);
@@ -173,12 +174,16 @@ async function getOrdersAvailableTickets(req, res) {
         if (!client) {
             return res.status(400).json({
                 status: false,
-                message: 'Client không tồn tại',
+                message: 'Client does not exist',
             });
         }
         const orders = await Order.find({ 'Orders.client_id': _idClient }).exec();
         const results = [];
         for (const order of orders) {
+            const event_id = order.event_id;
+            const event = await Event.findById(event_id);
+            const saleDate = event.sales_date;
+            const organizer = await Organizer.findById(event.organizer_id);
             for (const orderDetail of order.Orders) {
                 let refundTicketCount = 0;
                 let totalAvailableTickets = 0;
@@ -193,9 +198,11 @@ async function getOrdersAvailableTickets(req, res) {
                 if (totalAvailableTickets > 0) {
                     const result = {
                         client_id: orderDetail.client_id,
+                        organizer_id: organizer._id,
                         event_id: order.event_id,
                         event_name: order.event_name,
                         event_date: order.event_date,
+                        end_sale_date: saleDate.end_sales_date,
                         event_location: order.event_location,
                         totalAmount: orderDetail.totalAmount,
                         zp_trans_id: orderDetail.zp_trans_id,

@@ -111,7 +111,7 @@ function checkZaloReturn(m_refund_id) {
         timestamp: Date.now(), // miliseconds
         m_refund_id: m_refund_id,
     };
-    let data = config.appid + "|" + params.m_refund_id + "|" + params.timestamp; 
+    let data = config.appid + "|" + params.m_refund_id + "|" + params.timestamp;
     params.mac = CryptoJS.HmacSHA256(data, config.key1).toString()
     //return axios.post(endpoint, null, { params })
     let postConfig = {
