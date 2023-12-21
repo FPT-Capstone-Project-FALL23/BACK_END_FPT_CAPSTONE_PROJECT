@@ -6,7 +6,8 @@ const { upLoadImg } = require("../controllers/authController");
 const unorm = require('unorm');
 const RefundOrder = require('../model/refundOrderModel');
 const PayBusiness = require('../model/payBusinessModel');
-const { calculatePaginationParams } = require('./adminControler');
+const { calculatePaginationParams, getMailOfClient } = require('./adminControler');
+const { sendEmailNoticeChangeEventDate } = require('./emailController');
 
 /*=============================
 ## Name function: checkExistsIdOrganizer
@@ -370,15 +371,18 @@ async function updateEvent(req, res) {
         else {
             let listIdClients = [];
             let dateDB = null;
+            let dateUpdate = null;
             for (let i = 0; i < event.event_date.length; i++) {
-                const dateUpdate = event_date[i];
+                dateUpdate = event_date[i];
+                console.log("i", i);
+                console.log("length", event.event_date.length);
                 console.log("object1", dateUpdate);
                 console.log("object2", dateUpdate.dateEvent);
+                // console.log("event", event);
                 event.event_date.forEach((date) => {
                     dateDB = date.date;
                     console.log("object3", dateDB);
                     date.event_areas.forEach((area) => {
-                        // Lặp qua tất cả dãy ghế (rows) trong khu vực
                         area.rows.forEach((row) => {
                             row.chairs.forEach((chair) => {
                                 if (chair.isBuy) {
@@ -402,22 +406,27 @@ async function updateEvent(req, res) {
                     {
                         $set: {
                             'event_date.$.date': new Date(dateUpdate.dateEvent),
-                            // 'isActive': false,
+                            'isActive': false,
                         }
                     },
                     { new: true }
                 ).exec();
 
             }
-            
+
             const uniqueClientIdArray = Array.from(new Set(listIdClients));;
             console.log("id", uniqueClientIdArray);
+            for (const idClient of uniqueClientIdArray) {
+                const clientInfo = await getMailOfClient(idClient);
+                const emailClient = clientInfo.fomatInfoClient.email;
+                await sendEmailNoticeChangeEventDate(emailClient, event, dateUpdate.dateEvent);
+            }
         }
 
         res.status(200).json({
             status: true,
             // data: { updatedEvent, order, refundOrder },
-            message: 'Cập nhật sự kiện thành công',
+            message: 'Update event successfully',
         });
     }
     catch (error) {
