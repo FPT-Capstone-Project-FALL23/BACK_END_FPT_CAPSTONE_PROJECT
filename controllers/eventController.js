@@ -321,8 +321,9 @@ async function updateEvent(req, res) {
                 message: 'Bạn không có quyền chỉnh sửa sự kiện này',
             });
         }
-        const currentDate = new Date();
-        if (sales_date.start_sales_date > currentDate) {
+        const currentDate = new Date(); 
+        const startSale = new Date(sales_date.start_sales_date);
+        if (startSale > currentDate) { 
             console.log("date:", currentDate);
             //up ảnh bìa sự kiện
             let urlImageEvent;
