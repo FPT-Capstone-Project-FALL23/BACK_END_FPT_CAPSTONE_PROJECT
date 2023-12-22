@@ -10,6 +10,7 @@ const ticketSchema = new mongoose.Schema({
     chairName: { type: String },
     ticket_price: { type: Number },
     isRefund: { type: Boolean, default: false },
+    refunded: { type: Boolean, default: false },
     ticket: { type: String }
 });
 

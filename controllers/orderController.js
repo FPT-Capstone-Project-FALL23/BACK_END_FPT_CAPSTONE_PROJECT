@@ -329,20 +329,22 @@ async function getMyTicket(req, res) {
             return;
         }
 
-        const refundOrder = await RefundOrder.findOne({ order_id: order._id }).exec();
+        /* const refundOrder = await RefundOrder.findOne({ order_id: order._id }).exec();
         console.log("refundOrder", refundOrder)
         if (!refundOrder) {
             orderDetail.refunded = false;
         } else {
             const refundedTickets = refundOrder.OrderRefunds
                 .filter(refund => refund.client_id.toString() === orderDetail.client_id.toString())
-                .map(refund => refund.tickets.map(ticket => ticket.chair_id.toString()))
-            console.log("refundedTickets", refundedTickets)
+                .flatMap(refund => refund.tickets.map(ticket => ticket.chair_id.toString()));
+
+            console.log("refundedTickets", refundedTickets);
+
             orderDetail.tickets.forEach(ticket => {
                 ticket.refunded = refundedTickets.includes(ticket.chair_id.toString());
-                console.log("ticket.refunded", ticket.refunded)
+                console.log("ticket.refunded", ticket.refunded);
             });
-        }
+        } */
         // Format the data
         const formattedData = [{
             _id: order._id,

@@ -322,6 +322,14 @@ async function refundMoney(req, res) {
                 message: 'Refund Order does not exist',
             });
         }
+        const order = await Order.findOneAndUpdate(
+            {
+                '_id': refund.order_id,
+                // 'Orders.tickets._id': ticketId,
+            },
+            { $set: { 'Orders.$[].tickets.$[].refunded': true } },
+            { new: true }
+        );
         const _idEvent = refund.event_id;
         const event = await Event.findById(_idEvent);
         if (!event) {
