@@ -370,7 +370,6 @@ async function getMyTicket(req, res) {
                 }
             ]
         }];
-        console.log("object", formattedData);
         res.status(200).json({ status: true, data: formattedData });
     } catch (error) {
         console.error(error);
