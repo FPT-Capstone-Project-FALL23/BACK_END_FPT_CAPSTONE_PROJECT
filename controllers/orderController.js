@@ -337,14 +337,13 @@ async function getMyTicket(req, res) {
             const refundedTickets = refundOrder.OrderRefunds
                 .filter(refund => refund.client_id.toString() === orderDetail.client_id.toString())
                 .map(refund => refund.tickets.map(ticket => ticket.chair_id.toString()))
-                .reduce((acc, val) => acc.concat(val), []);
+                // .reduce((acc, val) => acc.concat(val), []);
             console.log("refundedTickets", refundedTickets)
             orderDetail.tickets.forEach(ticket => {
                 ticket.refunded = refundedTickets.includes(ticket.chair_id.toString());
                 console.log("ticket.refunded", ticket.refunded)
             });
         }
-
         // Format the data
         const formattedData = [{
             _id: order._id,
@@ -371,7 +370,7 @@ async function getMyTicket(req, res) {
                 }
             ]
         }];
-
+        console.log("object", formattedData);
         res.status(200).json({ status: true, data: formattedData });
     } catch (error) {
         console.error(error);
