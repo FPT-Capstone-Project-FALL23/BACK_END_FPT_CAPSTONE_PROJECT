@@ -57,7 +57,7 @@ async function createRating(req, res) {
             eventExists.totalRating = averageRating;
             await eventExists.save();
 
-            return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, updatedRating });
+            return res.status(201).json({ message: 'Đánh giá đã được thêm thành công', totalRating: eventExists.totalRating, savedRating });
         }
     } catch (error) {
         console.error(error);
@@ -172,7 +172,9 @@ async function getClientRating(req, res) {
                 clientRating: star,
             });
         } else {
-            res.status(404).json({ error: 'Không tìm thấy đánh giá cho sự kiện này từ khách hàng cụ thể' });
+            res.status(200).json({
+                clientRating: null
+            }); 
         }
     } catch (error) {
         console.error(error);
