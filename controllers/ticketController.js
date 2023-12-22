@@ -68,7 +68,12 @@ async function createTicket(req, res) {
         }
         const zp_trans_id = response.data.zp_trans_id;
         // Mở trình duyệt với Puppeteer
-        const browser = await puppeteer.launch({ headless: "new" });
+        // const browser = await puppeteer.launch({ headless: "new" });
+        const browser = await puppeteer.launch({
+            executablePath: '/usr/bin/chromium-browser',
+
+            ignoreDefaultArgs: ['--disable-extensions'], headless: "new"
+        });
         const page = await browser.newPage();
 
         let buffers = [];
