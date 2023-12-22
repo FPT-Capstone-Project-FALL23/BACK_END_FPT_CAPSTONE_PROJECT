@@ -959,7 +959,7 @@ async function selectChairInArea(req, res) {
 
 async function getLatestHotEventImages(req, res) {
     try {
-        const events = await Event.find({ isHot: true })
+        const events = await Event.find({ isActive: true })
             .sort({ create_date: -1 }) // Sort in descending order of create_date
             .limit(3); // Limit the results to 3
 

@@ -58,7 +58,7 @@ async function createRefund(req, res) {
                     area.rows.forEach((row) => {
                         const chair = row.chairs.find((c) => c._id.toString() == chairId);
                         if (chair) {
-                            foundChair = chair;
+                            foundChair = chair.chair_name;
                             foundEventArea = area.name_areas;
                         }
                     });
@@ -294,10 +294,8 @@ async function listIsRefund(req, res) {
             message: 'success',
             data: {
                 totalRefundAmount: formatMoney(totalRefundAmount),
-                refunds: results.slice(skip, skip + limit),
+                refunds: results,
                 lenght: results.length,
-                totalPages: totalPages,
-                currentPage: currentPage
                 // listRefund
             }
         });

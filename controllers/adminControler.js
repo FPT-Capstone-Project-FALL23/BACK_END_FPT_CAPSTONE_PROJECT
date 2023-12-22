@@ -218,21 +218,13 @@ async function getAllOrganizers(req, res) {
         const organizersInfo = await Organizer.find({ isActive: true }).sort({ create_date: -1 })
             .skip(skip)
             .limit(limit)
-            .exec();;
+            .exec();
 
-        if (!organizersInfo || organizersInfo.length === 0) {
-            return res.status(404).json({ message: 'No active organizers found' });
-        }
+        const organizersIds = organizersInfo?.map(organizer => organizer.user_id);
 
-        const organizersIds = organizersInfo.map(organizer => organizer.user_id);
+        const organizers = await User?.find({ _id: { $in: organizersIds }, isBlocked: false }).exec();
 
-        const organizers = await User.find({ _id: { $in: organizersIds }, isBlocked: false }).exec();
-
-        if (!organizers || organizers.length === 0) {
-            return res.status(404).json({ message: 'No active organizers found' });
-        }
-
-        const organizersWithInfo = organizers.map(organizer => {
+        const organizersWithInfo = organizers?.map(organizer => {
             const organizerData = {};
             const userInfo = organizersInfo.find(info => info.user_id.equals(organizer._id));
             organizerData._id = organizer._id;
@@ -511,9 +503,6 @@ async function getAllOrganizerBlockeds(req, res) {
         const { page } = req.body;
         const organizersInfo = await Organizer.find({ isActive: true }).exec();
 
-        if (!organizersInfo || organizersInfo.length === 0) {
-            return res.status(404).json({ message: 'No active organizers found' });
-        }
 
         const organizersIds = organizersInfo.map(organizer => organizer.user_id);
 
@@ -526,13 +515,10 @@ async function getAllOrganizerBlockeds(req, res) {
             .limit(limit)
             .exec()
 
-        if (!organizers || organizers.length === 0) {
-            return res.status(404).json({ message: 'No active organizers found' });
-        }
 
-        const organizersWithInfo = organizers.map(organizer => {
+        const organizersWithInfo = organizers?.map(organizer => {
             const organizerData = {};
-            const userInfo = organizersInfo.find(info => info.user_id.equals(organizer._id));
+            const userInfo = organizersInfo?.find(info => info.user_id.equals(organizer._id));
             organizerData._id = organizer._id;
             organizerData.email = organizer.email;
             organizerData.isBlocked = organizer.isBlocked;
@@ -541,7 +527,7 @@ async function getAllOrganizerBlockeds(req, res) {
         });
 
         // Format the response
-        const formattedOrganizers = organizersWithInfo.map(organizer => ({
+        const formattedOrganizers = organizersWithInfo?.map(organizer => ({
             _id: organizer._id,
             email: organizer.email,
             organizer_name: organizer.additionalInfo?.organizer_name,
